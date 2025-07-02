@@ -12,21 +12,37 @@ RUN \
         npm \
         curl \
         git \
+        rust \
+        cargo \
         && apk add --no-cache --virtual .build-dependencies \
         build-base \
         python3-dev \
         libffi-dev \
         openssl-dev \
-        && pip3 install --no-cache-dir --upgrade pip
+        musl-dev \
+        linux-headers \
+        && pip3 install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy Python requirements and install
+# Copy Python requirements and install in stages
 COPY requirements.txt /tmp/
 RUN \
     echo "Installing Python requirements..." \
-    && pip3 install --no-cache-dir -r /tmp/requirements.txt \
+    && cat /tmp/requirements.txt \
+    && echo "Installing core packages first..." \
+    && pip3 install --no-cache-dir fastapi uvicorn pydantic sqlalchemy \
+    && echo "Installing additional packages..." \
+    && pip3 install --no-cache-dir pydantic-settings python-dotenv aiofiles jinja2 \
+    && echo "Installing YAML and HTTP packages..." \
+    && pip3 install --no-cache-dir ruamel.yaml pyyaml httpx \
+    && echo "Installing remaining packages..." \
+    && pip3 install --no-cache-dir alembic apscheduler python-multipart \
+    && echo "Installing cryptography (may take time)..." \
+    && pip3 install --no-cache-dir "cryptography>=3.4.8" \
+    && echo "All Python packages installed successfully" \
     && echo "Cleaning up build dependencies..." \
     && apk del .build-dependencies \
-    && rm -rf /tmp/*
+    && rm -rf /tmp/* \
+    && echo "Cleanup complete"
 
 # Copy and build frontend
 COPY ui/ /tmp/ui/
