@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] - 2025-01-02
+
+### Added - Comprehensive Scan Debugging 🔍
+- **Multiple Debugging Methods**: Added visible debugging since detailed logs weren't appearing in expected locations
+- **Print Statement Debugging**: Console output for scan creation, execution steps, and failure points
+- **Debug API Endpoint**: New `/api/scan/debug/quick-check` endpoint for immediate system state inspection
+- **Step-by-Step Scan Tracing**: Detailed logging of LLM profile lookup, provider creation, connection testing, and file discovery
+
+### Debug Features
+- **LLM Profile Analysis**: Shows total profiles, active profiles, and API key status
+- **File Discovery Debugging**: Reports file count and config path validation
+- **Recent Scan History**: Last 3 scans with status, file count, and timing details
+- **Real-time System State**: Immediate JSON response with all key component statuses
+
+### Technical Details
+- **Console Output**: Print statements in scan workflow that should appear in addon logs
+- **API Response Debugging**: Direct endpoint call provides immediate feedback without log file access
+- **Comprehensive Coverage**: Every major step in scan execution now has debug output
+- **Error Classification**: Enhanced error reporting for LLM connection, file discovery, and profile issues
+
+### Usage
+- **Debug Endpoint**: Call `GET /api/scan/debug/quick-check` for immediate system state
+- **Console Logs**: Look for print statements in Home Assistant addon logs during scan execution
+- **Network Tab**: Debug endpoint response visible in browser developer tools
+
+This version provides multiple ways to diagnose scan failures and identify configuration issues.
+
 ## [0.2.11] - 2025-01-02
 
 ### Fixed - WebSocket and LLM Connection Issues 🔧
