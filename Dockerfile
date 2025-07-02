@@ -49,7 +49,9 @@ COPY ui/ /tmp/ui/
 RUN \
     echo "Building frontend..." \
     && cd /tmp/ui \
-    && npm ci --only=production \
+    && echo "Installing frontend dependencies with npm ci..." \
+    && npm ci --omit=dev \
+    && echo "Building frontend application..." \
     && npm run build \
     && mkdir -p /app/static \
     && cp -r build/* /app/static/ \
