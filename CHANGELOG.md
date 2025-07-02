@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2025-01-02
+
+### Fixed - Path Calculation Bug in File Tree 🛠️
+- **Fixed Critical Path Logic Error**: Root directory path calculation was failing for files in `/homeassistant`
+- **Enhanced Path Handling**: Added special case handling for files in the root config directory
+- **Improved Relative Path Logic**: Files at root level now use filename as relative path instead of failing
+- **Comprehensive Debug Logging**: Added detailed step-by-step logging to trace file processing
+
+### Root Cause Identified
+The file tree was returning 0 files because:
+- Files in `/homeassistant` directory failed the `path.relative_to(self.config_path)` calculation
+- When path calculation failed, files were getting excluded from the tree
+- The relative path logic didn't handle root directory files correctly
+
+### Technical Details
+- **Before**: `path.relative_to(self.config_path)` failed for files directly in `/homeassistant`
+- **After**: Special handling for root directory (`path == self.config_path`) and better fallback logic
+- **Impact**: configuration.yaml, scenes.yaml, scripts.yaml now properly included in file tree
+- **Debug**: Added comprehensive logging to trace every step of file processing
+
+This should finally fix the file picker showing "No files available" issue.
+
 ## [0.2.9] - 2025-01-02
 
 ### Fixed - File Tree Logic Bug 🐛

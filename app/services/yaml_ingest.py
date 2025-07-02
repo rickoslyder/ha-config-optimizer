@@ -147,11 +147,15 @@ class YAMLIngestService:
             logger.info(f"[build_tree_node] Is file: {path.is_file()}, Is dir: {path.is_dir()}")
             
             try:
-                relative_path = str(path.relative_to(self.config_path))
+                if path == self.config_path:
+                    relative_path = ""
+                else:
+                    relative_path = str(path.relative_to(self.config_path))
                 logger.info(f"[build_tree_node] Relative path: '{relative_path}'")
             except Exception as e:
                 logger.error(f"[build_tree_node] Error calculating relative path for {path}: {e}")
-                relative_path = str(path.name)  # Fallback to just the name
+                # For files in the root directory, use just the filename
+                relative_path = str(path.name)
             
             if path.is_file():
                 try:
