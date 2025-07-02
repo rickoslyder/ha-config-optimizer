@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-01-02
+
+### Fixed - AppArmor Startup Issue 🛠️
+- **Removed AppArmor Profile**: Deleted `apparmor.txt` file that was causing container startup failures
+- **Fixed Container Error**: Resolved "OCI runtime create failed: unable to apply apparmor profile" error
+
+### Root Cause
+The presence of `apparmor.txt` file was causing Home Assistant to automatically attempt to apply an AppArmor profile, even though it wasn't explicitly configured in `config.yaml`. This caused startup failures on systems that don't support AppArmor or have it configured differently.
+
+### Technical Details  
+- Removed the AppArmor profile file that was added in v0.2.1 security enhancements
+- Addon will now start without attempting to apply security profiles
+- Future AppArmor support can be added back with proper configuration when needed
+
+This hotfix resolves the critical startup issue preventing the addon from running.
+
 ## [0.2.3] - 2025-01-02
 
 ### Fixed - Critical Addon Discovery Fix 🚨
@@ -251,7 +267,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...v0.2.1
