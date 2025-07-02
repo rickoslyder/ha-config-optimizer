@@ -9,6 +9,7 @@ from app.models.database import get_db
 from app.models.schemas import Scan, ScanStatus
 from app.models.pydantic_models import ScanCreate, ScanResponse
 from app.services.yaml_ingest import YAMLIngestService
+from app.services.scan_service import ScanService
 
 router = APIRouter()
 
@@ -22,18 +23,24 @@ async def get_scans(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ScanResponse)
 async def create_scan(scan_request: ScanCreate, db: Session = Depends(get_db)):
-    """Create a new scan."""
-    # Create scan record
-    scan = Scan(
-        status=ScanStatus.PENDING,
-        llm_profile_id=scan_request.llm_profile_id
-    )
-    db.add(scan)
-    db.commit()
-    db.refresh(scan)
+    """Create a new scan and start execution."""
+    scan_service = ScanService()
     
-    # TODO: Start background scan task
-    # For now, just return the created scan
+    # Create scan record
+    scan = scan_service.create_scan(
+        db, 
+        llm_profile_id=scan_request.llm_profile_id,
+        scan_type=scan_request.scan_type
+    )
+    
+    # Start background scan execution
+    file_paths = scan_request.files if scan_request.files else None
+    await scan_service.start_background_scan(
+        scan.id, 
+        file_paths=file_paths,
+        analysis_types=["optimization"]  # Default to optimization
+    )
+    
     return scan
 
 
@@ -46,8 +53,27 @@ async def get_scan(scan_id: int, db: Session = Depends(get_db)):
     return scan
 
 
+@router.post("/{scan_id}/cancel")
+async def cancel_scan(scan_id: int, db: Session = Depends(get_db)):
+    """Cancel a running scan."""
+    scan_service = ScanService()
+    success = scan_service.cancel_scan(db, scan_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Scan not found or not cancellable")
+    
+    return {"message": "Scan cancelled"}
+
+
 @router.get("/files/tree")
 async def get_file_tree():
     """Get available YAML files in config directory."""
     yaml_service = YAMLIngestService()
     return yaml_service.get_file_tree()
+
+
+@router.get("/providers/supported")
+async def get_supported_providers():
+    """Get information about supported LLM providers."""
+    from app.services.llm_factory import LLMProviderFactory
+    return LLMProviderFactory.get_supported_providers()

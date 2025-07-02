@@ -54,6 +54,7 @@ class Suggestion(Base):
     impact = Column(String(50))  # high, medium, low
     status = Column(Enum(SuggestionStatus), default=SuggestionStatus.PENDING)
     created_at = Column(DateTime, default=datetime.utcnow)
+    metadata_json = Column(JSON, nullable=True)  # Store additional metadata
     
     # Relationships
     scan = relationship("Scan", back_populates="suggestions")
