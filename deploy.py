@@ -138,11 +138,13 @@ class SambaClient:
             import getpass
             self.config.samba_password = getpass.getpass("Samba password: ")
         
-        # Create temporary mount point with cleanup of existing
-        mount_dir = tempfile.mkdtemp(prefix="ha_addon_deploy_")
-        self.mount_point = Path(mount_dir)
+        # Create temporary mount point with unique naming
+        import uuid
+        mount_name = f"ha_addon_deploy_{uuid.uuid4().hex[:8]}"
+        temp_dir = tempfile.gettempdir()
+        self.mount_point = Path(temp_dir) / mount_name
         
-        # Clean up any existing mount point
+        # Clean up any existing directory
         if self.mount_point.exists():
             try:
                 # Try to unmount if it's already mounted
@@ -150,8 +152,15 @@ class SambaClient:
                 shutil.rmtree(self.mount_point)
             except:
                 pass
-            # Recreate the directory
-            self.mount_point.mkdir(parents=True, exist_ok=True)
+        
+        # Create the mount point directory
+        try:
+            self.mount_point.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            # If it still exists, try with a different UUID
+            mount_name = f"ha_addon_deploy_{uuid.uuid4().hex[:8]}"
+            self.mount_point = Path(temp_dir) / mount_name
+            self.mount_point.mkdir(parents=True, exist_ok=False)
         
         try:
             # Mount command for macOS
@@ -388,13 +397,19 @@ class FileWatcher(FileSystemEventHandler):
 def cleanup_stale_mounts():
     """Clean up any stale mount points from previous runs."""
     try:
-        import glob
-        # Check multiple possible temp directories
+        # Check multiple possible temp directories with proper glob expansion
         temp_patterns = [
             "/tmp/ha_addon_deploy_*",
-            "/private/var/folders/*/T/ha_addon_deploy_*",
-            "/var/folders/*/T/ha_addon_deploy_*"
         ]
+        
+        # Add macOS-specific temp directories
+        if os.path.exists("/private/var/folders"):
+            # Use os.walk to find temp directories in the macOS temp structure
+            for root, dirs, files in os.walk("/private/var/folders"):
+                if "T" in dirs:
+                    temp_path = os.path.join(root, "T")
+                    if os.path.exists(temp_path):
+                        temp_patterns.append(os.path.join(temp_path, "ha_addon_deploy_*"))
         
         for pattern in temp_patterns:
             temp_dirs = glob.glob(pattern)
@@ -405,9 +420,11 @@ def cleanup_stale_mounts():
                     if os.path.exists(temp_dir):
                         shutil.rmtree(temp_dir)
                         print(f"🧹 Cleaned up stale mount point: {temp_dir}")
-                except:
-                    pass
-    except:
+                except Exception as e:
+                    # Only print if it's a meaningful error
+                    if "Device busy" in str(e):
+                        print(f"⚠️  Could not clean {temp_dir}: device busy")
+    except Exception:
         pass
 
 

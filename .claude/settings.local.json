@@ -18,7 +18,8 @@
       "WebFetch(domain:developers.home-assistant.io)",
       "WebFetch(domain:developers.home-assistant.io)",
       "Bash(rm:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(pip3 install:*)"
     ],
     "deny": []
   }
