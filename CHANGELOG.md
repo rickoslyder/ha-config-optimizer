@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2025-01-02
+
+### Fixed - WebSocket and LLM Connection Issues 🔧
+- **Fixed WebSocket URLs in Home Assistant Ingress**: WebSocket connections now properly use Ingress path like REST API
+- **Enhanced LLM Connection Debugging**: Added detailed logging for OpenAI connection issues and error classification
+- **Better Network Error Handling**: Specific handling for timeout, connection, and API errors
+- **WebSocket Progress Tracking**: Real-time scan progress now works properly in Home Assistant environment
+
+### Root Cause: Ingress Environment Compatibility
+The scan workflow was failing because:
+- WebSocket connections were using absolute URLs instead of Ingress-relative paths
+- LLM connection errors weren't providing enough detail for troubleshooting
+- Network issues (DNS resolution failures) were causing scan failures
+
+### Technical Details
+- **WebSocket Fix**: Added Ingress environment detection similar to REST API service
+- **LLM Debugging**: Enhanced error messages with connection timeout, DNS, and API key validation
+- **Error Classification**: Specific error handling for 401 (invalid key), 429 (rate limit), timeouts, etc.
+- **Logging**: Added comprehensive logging for debugging LLM connectivity issues
+
+This should fix both the WebSocket progress tracking and provide better visibility into LLM connection issues.
+
 ## [0.2.10] - 2025-01-02
 
 ### Fixed - Path Calculation Bug in File Tree 🛠️

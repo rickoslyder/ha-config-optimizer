@@ -139,18 +139,50 @@ class OpenAIProvider(BaseLLMProvider):
     async def test_connection(self) -> tuple[bool, Optional[str]]:
         """Test OpenAI API connection."""
         try:
-            test_messages = [
-                LLMMessage(role="user", content="Hello, please respond with 'OK' if you can hear me.")
-            ]
+            logger.info(f"Testing OpenAI connection to {self.base_url} with model {self.model}")
             
-            response = await self.generate(test_messages)
-            
-            if response.content:
-                return True, "Connection successful"
-            else:
-                return False, "Empty response from API"
+            # First test basic API connectivity with a simple request
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key[:10]}...",  # Log partial key for debugging
+                    "Content-Type": "application/json"
+                }
                 
+                # Test basic connectivity with a minimal request
+                test_payload = {
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 1
+                }
+                
+                logger.info(f"Sending test request to {self.base_url}/chat/completions")
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=test_payload,
+                    timeout=30.0
+                )
+                
+                logger.info(f"OpenAI API response status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    return True, "Connection successful"
+                elif response.status_code == 401:
+                    return False, "Invalid API key"
+                elif response.status_code == 429:
+                    return False, "Rate limit exceeded"
+                else:
+                    error_text = response.text[:200] if response.text else "No error details"
+                    return False, f"API error {response.status_code}: {error_text}"
+                
+        except httpx.ConnectTimeout as e:
+            logger.error(f"OpenAI connection timeout: {e}")
+            return False, f"Connection timeout: {str(e)}"
+        except httpx.ConnectError as e:
+            logger.error(f"OpenAI connection error: {e}")
+            return False, f"Connection error: {str(e)}"
         except Exception as e:
+            logger.error(f"OpenAI test connection failed: {type(e).__name__}: {e}")
             return False, f"Connection failed: {str(e)}"
     
     async def list_models(self) -> list[str]:

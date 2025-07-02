@@ -310,9 +310,32 @@ export class ScanProgress extends LitElement {
   }
 
   private connectToScan(scanId: number) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/scan/${scanId}`;
+    // Detect if we're in Home Assistant Ingress environment
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    const isIngress = pathSegments.includes('api') && pathSegments.includes('hassio_ingress');
+    
+    let wsUrl: string;
+    if (isIngress) {
+      // In Ingress mode, construct WebSocket URL relative to current path
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Use the current location but replace the protocol and add the WebSocket endpoint
+      const currentPath = window.location.href.replace(window.location.protocol, protocol);
+      // Extract the base path up to the ingress token
+      const ingressTokenIndex = pathSegments.findIndex(segment => segment.length > 40); // Ingress tokens are long
+      if (ingressTokenIndex !== -1) {
+        const basePath = pathSegments.slice(0, ingressTokenIndex + 1).join('/');
+        wsUrl = `${protocol}//${window.location.host}/${basePath}/ws/scan/${scanId}`;
+      } else {
+        // Fallback: use relative path construction
+        wsUrl = `${protocol}//${window.location.host}${window.location.pathname}../ws/scan/${scanId}`;
+      }
+    } else {
+      // Development or direct access - use absolute path
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}/ws/scan/${scanId}`;
+    }
+    
+    console.log(`Connecting to WebSocket: ${wsUrl}`);
     
     try {
       const ws = new WebSocket(wsUrl);
