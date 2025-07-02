@@ -52,8 +52,14 @@ class ScanService:
             scan.status = ScanStatus.RUNNING
             db.commit()
             
+            # Use both logger and print for debugging
             logger.info(f"=== SCAN {scan_id} EXECUTION START ===")
             logger.info(f"Scan details: status={scan.status}, llm_profile_id={scan.llm_profile_id}")
+            
+            print(f"=== SCAN {scan_id} EXECUTION START ===")
+            print(f"Scan details: status={scan.status}, llm_profile_id={scan.llm_profile_id}")
+            print(f"File paths parameter: {file_paths}")
+            print(f"Analysis types parameter: {analysis_types}")
             
             # Get LLM profile
             logger.info(f"[SCAN {scan_id}] Step 1: Looking up LLM profile")
@@ -81,6 +87,7 @@ class ScanService:
             
             if not llm_profile:
                 logger.error(f"[SCAN {scan_id}] FAILURE: No LLM profile available for scan")
+                print(f"[SCAN {scan_id}] FAILURE: No LLM profile available for scan")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
@@ -102,6 +109,7 @@ class ScanService:
                 
             if not llm_provider:
                 logger.error(f"[SCAN {scan_id}] FAILURE: Failed to create LLM provider for profile {llm_profile.id}")
+                print(f"[SCAN {scan_id}] FAILURE: Failed to create LLM provider for profile {llm_profile.id}")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
@@ -118,6 +126,7 @@ class ScanService:
                 
             if not connection_ok:
                 logger.error(f"[SCAN {scan_id}] FAILURE: LLM provider connection failed: {error_msg}")
+                print(f"[SCAN {scan_id}] FAILURE: LLM provider connection failed: {error_msg}")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
@@ -140,6 +149,7 @@ class ScanService:
             
             if not file_paths:
                 logger.warning(f"[SCAN {scan_id}] COMPLETED WITH NO FILES: No files found to scan")
+                print(f"[SCAN {scan_id}] COMPLETED WITH NO FILES: No files found to scan")
                 scan.status = ScanStatus.COMPLETED
                 scan.ended_at = datetime.utcnow()
                 scan.file_count = 0
