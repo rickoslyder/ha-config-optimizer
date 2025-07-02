@@ -3,12 +3,14 @@ FastAPI application factory for Home Assistant Config Optimizer.
 """
 import os
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import scan, suggestions, settings, ha_integration
+from app.api import scan, suggestions, settings, ha_integration, logs
+from app.api.websocket import websocket_scan_endpoint
 from app.models.init_db import create_tables, init_default_data
+from app.utils.migrate_encryption import migrate_api_keys_to_encrypted
 
 
 def is_addon_environment() -> bool:
@@ -21,6 +23,12 @@ def create_app() -> FastAPI:
     # Initialize database on startup
     create_tables()
     init_default_data()
+    
+    # Migrate existing API keys to encrypted format
+    try:
+        migrate_api_keys_to_encrypted()
+    except Exception as e:
+        print(f"Warning: API key migration failed: {e}")
     
     # Configure app for addon environment
     is_addon = is_addon_environment()
@@ -58,6 +66,12 @@ def create_app() -> FastAPI:
     app.include_router(suggestions.router, prefix="/api/suggestions", tags=["suggestions"])
     app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
     app.include_router(ha_integration.router, prefix="/api/ha", tags=["homeassistant"])
+    app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+
+    # WebSocket endpoints
+    @app.websocket("/ws/scan/{scan_id}")
+    async def websocket_scan(websocket: WebSocket, scan_id: int):
+        await websocket_scan_endpoint(websocket, scan_id)
 
     return app
 

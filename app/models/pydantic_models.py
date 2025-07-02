@@ -56,6 +56,17 @@ class LLMProfileCreate(BaseModel):
     model_name: Optional[str] = None
 
 
+class LLMProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    provider: Optional[str] = None
+    endpoint: Optional[str] = None
+    api_key: Optional[str] = None
+    context_tokens: Optional[int] = None
+    role: Optional[str] = None
+    model_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 # Response models
 class DiffResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

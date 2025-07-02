@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, state, property } from 'lit/decorators.js';
 import { apiService, type Scan } from '../services/api.js';
 
 interface LogEntry {
@@ -13,6 +13,7 @@ interface LogEntry {
 
 @customElement('logs-view')
 export class LogsView extends LitElement {
+  private apiService = apiService;
   @state()
   private scans: Scan[] = [];
 
@@ -376,7 +377,7 @@ export class LogsView extends LitElement {
         this.selectedScan = scans[0];
       }
       
-      this.generateLogsFromScans();
+      await this.loadLogs();
     } catch (error) {
       console.error('Failed to load scans:', error);
     } finally {
@@ -384,85 +385,50 @@ export class LogsView extends LitElement {
     }
   }
 
-  private generateLogsFromScans() {
-    // Generate synthetic logs from scan data
-    // In a real implementation, these would come from actual log files or database
-    const logs: LogEntry[] = [];
-    
-    this.scans.forEach(scan => {
-      const baseTime = new Date(scan.started_at).getTime();
+  private async loadLogs() {
+    try {
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (this.selectedScan) {
+        params.append('scan_id', this.selectedScan.id.toString());
+      }
+      if (this.filterLevel !== 'all') {
+        params.append('level', this.filterLevel);
+      }
+      params.append('limit', '500');
       
-      // Scan started log
-      logs.push({
-        id: `${scan.id}-start`,
-        timestamp: scan.started_at,
-        level: 'info',
-        message: `Scan #${scan.id} started`,
-        details: `Type: ${scan.scan_type}\\nFiles: ${scan.file_count || 0}`,
-        scanId: scan.id
-      });
-      
-      // Progress logs for running/completed scans
-      if (scan.status !== 'pending') {
-        logs.push({
-          id: `${scan.id}-analyzing`,
-          timestamp: new Date(baseTime + 5000).toISOString(),
-          level: 'info',
-          message: `Analyzing configuration files`,
-          details: `Processing ${scan.file_count || 0} YAML files`,
-          scanId: scan.id
-        });
-        
-        if (scan.suggestions && scan.suggestions.length > 0) {
-          logs.push({
-            id: `${scan.id}-suggestions`,
-            timestamp: new Date(baseTime + 15000).toISOString(),
-            level: 'success',
-            message: `Generated ${scan.suggestions.length} suggestions`,
-            details: `Found ${scan.suggestions.filter(s => s.impact === 'high').length} high-impact suggestions`,
-            scanId: scan.id
-          });
-        }
+      const response = await fetch(`${this.apiService.baseUrl}/logs?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch logs');
       }
       
-      // Final status log
-      if (scan.ended_at) {
-        const level = scan.status === 'completed' ? 'success' : 'error';
-        const duration = Math.round((new Date(scan.ended_at).getTime() - baseTime) / 1000);
-        
-        logs.push({
-          id: `${scan.id}-end`,
-          timestamp: scan.ended_at,
-          level,
-          message: `Scan #${scan.id} ${scan.status}`,
-          details: `Duration: ${duration}s\\nSuggestions: ${scan.suggestions?.length || 0}`,
-          scanId: scan.id
-        });
-      } else if (scan.status === 'failed') {
-        logs.push({
-          id: `${scan.id}-failed`,
-          timestamp: new Date(baseTime + 10000).toISOString(),
-          level: 'error',
-          message: `Scan #${scan.id} failed`,
-          details: 'Check LLM configuration and API keys',
-          scanId: scan.id
-        });
-      }
-    });
-    
-    // Sort by timestamp descending (newest first)
-    this.logs = logs.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+      const data = await response.json();
+      
+      // Convert API response to LogEntry format
+      this.logs = data.logs.map((log: any) => ({
+        id: log.id.toString(),
+        timestamp: log.timestamp,
+        level: log.level as LogEntry['level'],
+        message: log.message,
+        details: log.details,
+        scanId: log.scan_id
+      }));
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      // Fallback to empty logs
+      this.logs = [];
+    }
   }
 
-  private handleScanSelect(scan: Scan) {
+  private async handleScanSelect(scan: Scan) {
     this.selectedScan = scan;
+    await this.loadLogs();
   }
 
-  private handleFilterChange(event: Event) {
+  private async handleFilterChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     this.filterLevel = select.value;
+    await this.loadLogs();
   }
 
   private toggleAutoRefresh() {
@@ -476,8 +442,9 @@ export class LogsView extends LitElement {
   }
 
   private startAutoRefresh() {
-    this.refreshInterval = window.setInterval(() => {
-      this.loadData();
+    this.refreshInterval = window.setInterval(async () => {
+      await this.loadData();
+      await this.loadLogs();
     }, 5000); // Refresh every 5 seconds
   }
 
@@ -490,22 +457,12 @@ export class LogsView extends LitElement {
 
   private async handleRefresh() {
     await this.loadData();
+    await this.loadLogs();
   }
 
   private getFilteredLogs(): LogEntry[] {
-    let filtered = this.logs;
-    
-    // Filter by selected scan
-    if (this.selectedScan) {
-      filtered = filtered.filter(log => log.scanId === this.selectedScan!.id);
-    }
-    
-    // Filter by log level
-    if (this.filterLevel !== 'all') {
-      filtered = filtered.filter(log => log.level === this.filterLevel);
-    }
-    
-    return filtered;
+    // Logs are already filtered server-side, just return them
+    return this.logs;
   }
 
   private formatTime(timestamp: string): string {
@@ -541,7 +498,7 @@ export class LogsView extends LitElement {
       <div class="header">
         <h1 class="title">Scan Logs</h1>
         <div class="controls">
-          <select class="filter-select" @change=${this.handleFilterChange}>
+          <select class="filter-select" @change=${(e: Event) => this.handleFilterChange(e)}>
             <option value="all">All Levels</option>
             <option value="info">Info</option>
             <option value="success">Success</option>
@@ -572,7 +529,7 @@ export class LogsView extends LitElement {
               <p>No scans found</p>
             </div>
           ` : html`
-            <div class="scan-item ${this.selectedScan === null ? 'selected' : ''}" @click=${() => this.selectedScan = null}>
+            <div class="scan-item ${this.selectedScan === null ? 'selected' : ''}" @click=${async () => { this.selectedScan = null; await this.loadLogs(); }}>
               <div class="scan-title">All Scans</div>
               <div class="scan-meta">View logs from all scans</div>
             </div>

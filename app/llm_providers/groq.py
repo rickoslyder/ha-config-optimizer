@@ -1,5 +1,5 @@
 """
-OpenAI LLM provider implementation.
+Groq LLM provider implementation.
 """
 import httpx
 import json
@@ -11,16 +11,16 @@ from .base import BaseLLMProvider, LLMMessage, LLMResponse
 logger = logging.getLogger(__name__)
 
 
-class OpenAIProvider(BaseLLMProvider):
-    """OpenAI API provider for GPT models."""
+class GroqProvider(BaseLLMProvider):
+    """Groq API provider for fast LLM inference."""
     
     def __init__(self, config):
         super().__init__(config)
-        self.base_url = config.get("endpoint", "https://api.openai.com/v1")
-        self.model = config.get("model_name", "gpt-3.5-turbo")
+        self.base_url = config.get("endpoint", "https://api.groq.com/openai/v1")
+        self.model = config.get("model_name", "llama-3.3-70b-versatile")
     
     async def generate(self, messages: list[LLMMessage]) -> LLMResponse:
-        """Generate a single response from OpenAI."""
+        """Generate a single response from Groq."""
         try:
             async with httpx.AsyncClient() as client:
                 headers = {
@@ -28,22 +28,14 @@ class OpenAIProvider(BaseLLMProvider):
                     "Content-Type": "application/json"
                 }
                 
-                # Special handling for o4 models
-                is_o4_model = "o4" in self.model
-                
+                # Groq uses OpenAI-compatible format
                 payload = {
                     "model": self.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
+                    "max_tokens": min(4096, self.context_tokens // 4),
+                    "temperature": 0.1,
+                    "top_p": 0.95
                 }
-                
-                # Add token limit parameter based on model type
-                if is_o4_model:
-                    # o4 models need much more tokens due to reasoning overhead
-                    payload["max_completion_tokens"] = min(4000, self.context_tokens - 500)
-                    # o4 models only support temperature=1 (default)
-                else:
-                    payload["max_tokens"] = min(1000, self.context_tokens // 4)
-                    payload["temperature"] = 0.1
                 
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -53,16 +45,16 @@ class OpenAIProvider(BaseLLMProvider):
                 )
                 
                 if response.status_code != 200:
-                    raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+                    raise Exception(f"Groq API error: {response.status_code} - {response.text}")
                 
                 data = response.json()
-                logger.debug(f"OpenAI API response: {data}")
+                logger.debug(f"Groq API response: {data}")
                 
                 choice = data["choices"][0]
                 content = choice["message"]["content"]
                 
                 if not content:
-                    logger.warning("OpenAI returned empty content")
+                    logger.warning("Groq returned empty content")
                     content = ""
                 
                 return LLMResponse(
@@ -73,11 +65,11 @@ class OpenAIProvider(BaseLLMProvider):
                 )
                 
         except Exception as e:
-            logger.error(f"OpenAI generation error: {e}")
+            logger.error(f"Groq generation error: {e}")
             raise
     
     async def stream_generate(self, messages: list[LLMMessage]) -> AsyncGenerator[str, None]:
-        """Stream response tokens from OpenAI."""
+        """Stream response tokens from Groq."""
         try:
             async with httpx.AsyncClient() as client:
                 headers = {
@@ -85,23 +77,14 @@ class OpenAIProvider(BaseLLMProvider):
                     "Content-Type": "application/json"
                 }
                 
-                # Special handling for o4 models
-                is_o4_model = "o4" in self.model
-                
                 payload = {
                     "model": self.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
+                    "max_tokens": min(4096, self.context_tokens // 4),
+                    "temperature": 0.1,
+                    "top_p": 0.95,
                     "stream": True
                 }
-                
-                # Add parameters based on model type
-                if is_o4_model:
-                    # o4 models need much more tokens due to reasoning overhead
-                    payload["max_completion_tokens"] = min(4000, self.context_tokens - 500)
-                    # o4 models only support temperature=1 (default)
-                else:
-                    payload["max_tokens"] = min(1000, self.context_tokens // 4)
-                    payload["temperature"] = 0.1
                 
                 async with client.stream(
                     "POST",
@@ -112,7 +95,7 @@ class OpenAIProvider(BaseLLMProvider):
                 ) as response:
                     
                     if response.status_code != 200:
-                        raise Exception(f"OpenAI API error: {response.status_code}")
+                        raise Exception(f"Groq API error: {response.status_code}")
                     
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
@@ -133,11 +116,11 @@ class OpenAIProvider(BaseLLMProvider):
                                 continue
                                 
         except Exception as e:
-            logger.error(f"OpenAI streaming error: {e}")
+            logger.error(f"Groq streaming error: {e}")
             yield f"Error: {str(e)}"
     
     async def test_connection(self) -> tuple[bool, Optional[str]]:
-        """Test OpenAI API connection."""
+        """Test Groq API connection."""
         try:
             test_messages = [
                 LLMMessage(role="user", content="Hello, please respond with 'OK' if you can hear me.")
@@ -154,7 +137,7 @@ class OpenAIProvider(BaseLLMProvider):
             return False, f"Connection failed: {str(e)}"
     
     async def list_models(self) -> list[str]:
-        """List available OpenAI models."""
+        """List available Groq models."""
         try:
             async with httpx.AsyncClient() as client:
                 headers = {
@@ -173,12 +156,8 @@ class OpenAIProvider(BaseLLMProvider):
                     models = []
                     for model in data.get("data", []):
                         model_id = model.get("id")
-                        # Filter for chat models and newer models
-                        if model_id and ("gpt" in model_id or "o1" in model_id or "o3" in model_id or "o4" in model_id):
+                        if model_id:
                             models.append(model_id)
-                    
-                    # Sort models with newest first
-                    models.sort(reverse=True)
                     return models
                 else:
                     # Fallback to known models if API fails
@@ -187,15 +166,12 @@ class OpenAIProvider(BaseLLMProvider):
             return self._get_known_models()
     
     def _get_known_models(self) -> list[str]:
-        """Return known OpenAI models as fallback."""
+        """Return known Groq models as fallback."""
         return [
-            "o4-mini",
-            "o4-mini-high",
-            "o3",
-            "o1-preview",
-            "o1-mini",
-            "gpt-4o",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-3.5-turbo"
+            "llama-3.3-70b-versatile",
+            "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it",
+            "gemma-7b-it"
         ]

@@ -18,6 +18,8 @@ export class ScanProgress extends LitElement {
 
   private stopMonitoring?: () => void;
   private lastUpdateTime = 0;
+  private webSockets = new Map<number, WebSocket>();
+  private progressData = new Map<number, any>();
 
   static styles = css`
     :host {
@@ -211,6 +213,7 @@ export class ScanProgress extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.stopCurrentMonitoring();
+    this.closeAllWebSockets();
   }
 
   private startMonitoring() {
@@ -243,6 +246,22 @@ export class ScanProgress extends LitElement {
       scan.status === 'running' || scan.status === 'pending'
     );
     this.lastUpdateTime = Date.now();
+    
+    // Set up WebSocket connections for new running scans
+    for (const scan of this.runningScans) {
+      if (!this.webSockets.has(scan.id)) {
+        this.connectToScan(scan.id);
+      }
+    }
+
+    // Clean up WebSocket connections for completed scans
+    for (const [scanId, ws] of this.webSockets.entries()) {
+      if (!this.runningScans.find(s => s.id === scanId)) {
+        ws.close();
+        this.webSockets.delete(scanId);
+        this.progressData.delete(scanId);
+      }
+    }
     
     // Dispatch event for parent components
     this.dispatchEvent(new CustomEvent('scans-updated', {
@@ -278,10 +297,78 @@ export class ScanProgress extends LitElement {
   }
 
   private getEstimatedProgress(scan: Scan): number {
-    // Estimate progress based on duration (rough approximation)
+    // Check if we have real-time progress data
+    const progressData = this.progressData.get(scan.id);
+    if (progressData && progressData.progress) {
+      return progressData.progress.percentage;
+    }
+    
+    // Fallback: estimate progress based on duration (rough approximation)
     const duration = Date.now() - new Date(scan.started_at).getTime();
     const estimatedTotal = 30000; // 30 seconds estimated
     return Math.min(95, (duration / estimatedTotal) * 100);
+  }
+
+  private connectToScan(scanId: number) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/scan/${scanId}`;
+    
+    try {
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log(`WebSocket connected for scan ${scanId}`);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleWebSocketMessage(scanId, data);
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error(`WebSocket error for scan ${scanId}:`, error);
+      };
+      
+      ws.onclose = () => {
+        console.log(`WebSocket closed for scan ${scanId}`);
+        this.webSockets.delete(scanId);
+      };
+      
+      this.webSockets.set(scanId, ws);
+    } catch (error) {
+      console.error(`Failed to connect WebSocket for scan ${scanId}:`, error);
+    }
+  }
+
+  private handleWebSocketMessage(scanId: number, data: any) {
+    if (data.type === 'progress' || data.type === 'update') {
+      this.progressData.set(scanId, data);
+      this.requestUpdate();
+    }
+  }
+
+  private closeAllWebSockets() {
+    for (const [scanId, ws] of this.webSockets.entries()) {
+      ws.close();
+    }
+    this.webSockets.clear();
+    this.progressData.clear();
+  }
+
+  private getScanProgressDetails(scan: Scan): string {
+    const progressData = this.progressData.get(scan.id);
+    if (progressData && progressData.progress) {
+      const { current_file, completed_files, total_files } = progressData.progress;
+      if (current_file) {
+        return `Analyzing ${current_file} (${completed_files}/${total_files})`;
+      }
+    }
+    return `${scan.file_count || 0} files`;
   }
 
   private formatLastUpdate(): string {
@@ -344,6 +431,7 @@ export class ScanProgress extends LitElement {
 
   private renderScanItem(scan: Scan) {
     const progress = this.getEstimatedProgress(scan);
+    const progressDetails = this.getScanProgressDetails(scan);
     
     return html`
       <div class="scan-item">
@@ -352,7 +440,7 @@ export class ScanProgress extends LitElement {
         <div class="scan-info">
           <div class="scan-title">Scan #${scan.id}</div>
           <div class="scan-details">
-            ${scan.file_count ? `Processing ${scan.file_count} files` : 'Initializing...'}
+            ${progressDetails}
           </div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: ${progress}%"></div>

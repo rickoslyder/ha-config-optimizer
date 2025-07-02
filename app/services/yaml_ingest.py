@@ -21,22 +21,54 @@ class YAMLIngestService:
         self.yaml.width = 4096
     
     def get_file_tree(self) -> Dict[str, Any]:
-        """Get a tree structure of available YAML files."""
-        tree = {"files": [], "directories": {}}
+        """Get a tree structure of available files and directories."""
+        def build_tree_node(path: Path) -> Dict[str, Any]:
+            """Build a tree node for a file or directory."""
+            relative_path = str(path.relative_to(self.config_path))
+            
+            if path.is_file():
+                return {
+                    "name": path.name,
+                    "path": relative_path,
+                    "type": "file",
+                    "size": path.stat().st_size,
+                    "lastModified": path.stat().st_mtime
+                }
+            else:
+                children = []
+                try:
+                    # Sort directories first, then files
+                    items = sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name.lower()))
+                    for item in items:
+                        # Skip hidden files and common excludes
+                        if item.name.startswith('.') or item.name in ['__pycache__', '.git']:
+                            continue
+                        # For files, only include YAML and common config files
+                        if item.is_file():
+                            if item.suffix.lower() in ['.yaml', '.yml', '.json', '.txt', '.md']:
+                                children.append(build_tree_node(item))
+                        else:
+                            # Include all directories but recursively
+                            child_node = build_tree_node(item)
+                            if child_node.get("children"):  # Only include dirs with content
+                                children.append(child_node)
+                except PermissionError:
+                    pass  # Skip directories we can't read
+                
+                return {
+                    "name": path.name if path != self.config_path else "Home Assistant Config",
+                    "path": relative_path if path != self.config_path else "",
+                    "type": "directory",
+                    "children": children
+                }
         
         try:
-            for item in self.config_path.rglob("*"):
-                if item.is_file() and item.suffix.lower() in ['.yaml', '.yml']:
-                    relative_path = str(item.relative_to(self.config_path))
-                    tree["files"].append({
-                        "path": relative_path,
-                        "size": item.stat().st_size,
-                        "modified": item.stat().st_mtime
-                    })
+            root_node = build_tree_node(self.config_path)
+            # Return the children of the root as the top level
+            return {"files": root_node.get("children", [])}
         except Exception as e:
             logger.error(f"Error reading file tree: {e}")
-        
-        return tree
+            return {"files": []}
     
     def read_yaml_file(self, file_path: str) -> Optional[Dict[str, Any]]:
         """Read and parse a single YAML file."""

@@ -24,7 +24,7 @@ This is the **LLM-Powered Home Assistant Config Optimizer** - a fully implemente
 - **Backend**: Python 3.12 + FastAPI + SQLAlchemy + SQLite
 - **Frontend**: LitElement SPA served by FastAPI
 - **Database**: SQLite (`/data/optimizer.db`)
-- **LLM Integration**: Pluggable providers (OpenAI, Claude, Groq, Ollama, vLLM)
+- **LLM Integration**: Pluggable providers (OpenAI, Claude, Groq, Ollama, vLLM) - See [LLM_PROVIDERS.md](./LLM_PROVIDERS.md)
 - **Deployment**: Single Docker container as Home Assistant addon
 - **Authentication**: Home Assistant Ingress integration
 
@@ -317,3 +317,14 @@ rm data/optimizer.db && alembic upgrade head
 - **YAML Corruption**: Verify backup system, check syntax validation
 - **UI Not Loading**: Check static file serving, browser console errors
 - **Database Locked**: Use WAL mode for SQLite, check concurrent access
+
+## LLM Provider Reference
+
+When implementing any LLM or AI-related features, ALWAYS consult [LLM_PROVIDERS.md](./LLM_PROVIDERS.md) for:
+- Current model names and IDs
+- Context length limits
+- Pricing information
+- Provider endpoints
+- Model selection guidelines
+
+The default OpenAI model is `gpt-o4-mini` with 128k context tokens.

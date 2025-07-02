@@ -3,7 +3,11 @@ import { customElement, state } from 'lit/decorators.js';
 import { apiService, type Suggestion, type Scan } from '../services/api.js';
 import '../components/diff-viewer.js';
 import '../components/scan-progress.js';
+import '../components/file-selector.js';
 import type { DiffSection } from '../components/diff-viewer.js';
+import { showToast } from '../components/toast-notification.js';
+import { showErrorToast } from '../utils/error-handler.js';
+import { LoadingManager } from '../utils/loading-state.js';
 
 @customElement('optimizations-view')
 export class OptimizationsView extends LitElement {
@@ -24,6 +28,26 @@ export class OptimizationsView extends LitElement {
 
   @state()
   private confirmSuggestion: Suggestion | null = null;
+
+  @state()
+  private showDiffModal = false;
+
+  @state()
+  private selectedSuggestion: Suggestion | null = null;
+
+  @state()
+  private showFileSelector = false;
+
+  @state()
+  private selectedSuggestionIds = new Set<number>();
+
+  @state()
+  private showBulkConfirm = false;
+
+  @state()
+  private bulkAction: 'accept' | 'reject' | null = null;
+
+  private loadingStates = new LoadingManager(() => this.requestUpdate());
 
   static styles = css`
     :host {
@@ -78,6 +102,63 @@ export class OptimizationsView extends LitElement {
       margin-bottom: 16px;
     }
 
+    .bulk-actions {
+      background: var(--card-background-color, #ffffff);
+      border: 1px solid var(--divider-color, #e0e0e0);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bulk-actions.hidden {
+      display: none;
+    }
+
+    .bulk-selection {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .select-all-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .bulk-count {
+      font-size: 14px;
+      color: var(--secondary-text-color, #757575);
+    }
+
+    .bulk-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .bulk-button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .bulk-accept {
+      background: var(--optimizer-success, #00c875);
+      color: white;
+    }
+
+    .bulk-reject {
+      background: var(--optimizer-error, #d32f2f);
+      color: white;
+    }
+
     .suggestions-list {
       display: flex;
       flex-direction: column;
@@ -91,6 +172,12 @@ export class OptimizationsView extends LitElement {
       border-left: 4px solid var(--impact-medium, #f57f17);
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .suggestion-card.selected {
+      box-shadow: 0 4px 12px rgba(3, 169, 244, 0.2);
+      border-left-color: var(--primary-color, #03a9f4);
     }
 
     .suggestion-card:hover {
@@ -110,6 +197,20 @@ export class OptimizationsView extends LitElement {
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 12px;
+    }
+
+    .suggestion-checkbox {
+      position: absolute;
+      top: 16px;
+      left: -2px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    .suggestion-content {
+      margin-left: 24px;
     }
 
     .suggestion-title {
@@ -273,11 +374,128 @@ export class OptimizationsView extends LitElement {
       opacity: 0.9;
       transform: translateY(-1px);
     }
+
+    .bulk-confirm-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .bulk-confirm-content {
+      background: var(--card-background-color, #ffffff);
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .bulk-confirm-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 16px 0;
+      color: var(--primary-text-color, #212121);
+    }
+
+    .bulk-confirm-message {
+      margin-bottom: 20px;
+      color: var(--secondary-text-color, #757575);
+      line-height: 1.5;
+    }
+
+    .bulk-confirm-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .diff-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .diff-modal-content {
+      background: var(--card-background-color, #ffffff);
+      border-radius: 8px;
+      max-width: 90vw;
+      max-height: 90vh;
+      width: 900px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .diff-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--divider-color, #e0e0e0);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--secondary-background-color, #f5f5f5);
+    }
+
+    .diff-modal-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0;
+      color: var(--primary-text-color, #212121);
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      color: var(--secondary-text-color, #757575);
+      transition: all 0.2s ease;
+    }
+
+    .close-button:hover {
+      background: var(--divider-color, #e0e0e0);
+      color: var(--primary-text-color, #212121);
+    }
+
+    .diff-modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .no-diff-content {
+      padding: 40px;
+      text-align: center;
+      color: var(--secondary-text-color, #757575);
+    }
   `;
 
   connectedCallback() {
     super.connectedCallback();
     this.loadData();
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   private handleScansUpdated(event: CustomEvent) {
@@ -310,25 +528,234 @@ export class OptimizationsView extends LitElement {
     }
   }
 
-  private async handleScanClick() {
+  private handleScanClick() {
+    this.showFileSelector = true;
+  }
+
+  private async handleFileSelection(event: CustomEvent) {
+    const { selectedFiles } = event.detail;
+    this.showFileSelector = false;
+    
     this.loading = true;
     try {
-      await apiService.createScan([]);
-      await this.loadData();
+      const scan = await apiService.createScanWithErrorHandling(selectedFiles);
+      if (scan) {
+        await this.loadData();
+        showToast(`Scan started for ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}`, 'success');
+      }
     } catch (error) {
-      console.error('Failed to create scan:', error);
+      showErrorToast(error, 'scan');
     } finally {
       this.loading = false;
     }
   }
 
+  private handleFileSelectorClose() {
+    this.showFileSelector = false;
+  }
+
   private async handleSuggestionAction(suggestionId: number, action: string) {
     try {
-      await apiService.updateSuggestion(suggestionId, action);
-      await this.loadData();
+      const result = await apiService.updateSuggestionWithErrorHandling(suggestionId, action);
+      if (result) {
+        await this.loadData();
+        showToast(`Suggestion ${action}`, 'success');
+      }
     } catch (error) {
-      console.error('Failed to update suggestion:', error);
+      showErrorToast(error, 'suggestion');
     }
+  }
+
+  private handleViewDiff(suggestion: Suggestion) {
+    this.selectedSuggestion = suggestion;
+    this.showDiffModal = true;
+  }
+
+  private closeDiffModal() {
+    this.showDiffModal = false;
+    this.selectedSuggestion = null;
+  }
+
+  private handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      if (this.showDiffModal) {
+        this.closeDiffModal();
+      }
+      if (this.showApplyConfirm) {
+        this.closeApplyConfirm();
+      }
+      if (this.showBulkConfirm) {
+        this.closeBulkConfirm();
+      }
+    }
+  }
+
+  private toggleSuggestionSelection(suggestionId: number) {
+    if (this.selectedSuggestionIds.has(suggestionId)) {
+      this.selectedSuggestionIds.delete(suggestionId);
+    } else {
+      this.selectedSuggestionIds.add(suggestionId);
+    }
+    this.requestUpdate();
+  }
+
+  private toggleSelectAll() {
+    const pendingSuggestions = this.suggestions.filter(s => s.status === 'pending');
+    
+    if (this.selectedSuggestionIds.size === pendingSuggestions.length) {
+      this.selectedSuggestionIds.clear();
+    } else {
+      this.selectedSuggestionIds.clear();
+      pendingSuggestions.forEach(s => this.selectedSuggestionIds.add(s.id));
+    }
+    this.requestUpdate();
+  }
+
+  private handleBulkAction(action: 'accept' | 'reject') {
+    this.bulkAction = action;
+    this.showBulkConfirm = true;
+  }
+
+  private closeBulkConfirm() {
+    this.showBulkConfirm = false;
+    this.bulkAction = null;
+  }
+
+  private async confirmBulkAction() {
+    if (!this.bulkAction || this.selectedSuggestionIds.size === 0) return;
+    
+    const action = this.bulkAction === 'accept' ? 'accepted' : 'rejected';
+    const selectedIds = Array.from(this.selectedSuggestionIds);
+    
+    try {
+      const results = await Promise.allSettled(
+        selectedIds.map(id => apiService.updateSuggestionWithErrorHandling(id, action))
+      );
+      
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
+      const failed = selectedIds.length - successful;
+      
+      await this.loadData();
+      this.selectedSuggestionIds.clear();
+      this.closeBulkConfirm();
+      
+      if (failed === 0) {
+        showToast(`${selectedIds.length} suggestion${selectedIds.length !== 1 ? 's' : ''} ${action}`, 'success');
+      } else {
+        showToast(`${successful} suggestion${successful !== 1 ? 's' : ''} ${action}, ${failed} failed`, 'warning');
+      }
+    } catch (error) {
+      showErrorToast(error, 'suggestion');
+    }
+  }
+
+  private exportSuggestions(format: 'json' | 'csv' | 'markdown') {
+    try {
+      const dataToExport = this.selectedSuggestionIds.size > 0 
+        ? this.suggestions.filter(s => this.selectedSuggestionIds.has(s.id))
+        : this.suggestions;
+      
+      if (dataToExport.length === 0) {
+        showToast('No suggestions to export', 'warning');
+        return;
+      }
+      
+      let content: string;
+      let filename: string;
+      let mimeType: string;
+      
+      switch (format) {
+        case 'json':
+          content = JSON.stringify(dataToExport, null, 2);
+          filename = 'ha-config-suggestions.json';
+          mimeType = 'application/json';
+          break;
+          
+        case 'csv':
+          content = this.convertToCSV(dataToExport);
+          filename = 'ha-config-suggestions.csv';
+          mimeType = 'text/csv';
+          break;
+          
+        case 'markdown':
+          content = this.convertToMarkdown(dataToExport);
+          filename = 'ha-config-suggestions.md';
+          mimeType = 'text/markdown';
+          break;
+          
+        default:
+          return;
+      }
+      
+      this.downloadFile(content, filename, mimeType);
+      showToast(`Exported ${dataToExport.length} suggestion${dataToExport.length !== 1 ? 's' : ''} as ${format.toUpperCase()}`, 'success');
+    } catch (error) {
+      showErrorToast(error, 'export');
+    }
+  }
+
+  private convertToCSV(suggestions: Suggestion[]): string {
+    const headers = ['ID', 'Title', 'Type', 'Impact', 'Status', 'Category', 'File Path', 'Description'];
+    const rows = suggestions.map(s => [
+      s.id.toString(),
+      `"${s.title.replace(/"/g, '""')}"`,
+      s.type,
+      s.impact,
+      s.status,
+      s.metadata?.category || '',
+      s.metadata?.file_path || '',
+      `"${s.body_md.replace(/"/g, '""').replace(/\n/g, ' ')}"`
+    ]);
+    
+    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  }
+
+  private convertToMarkdown(suggestions: Suggestion[]): string {
+    let markdown = '# Home Assistant Configuration Suggestions\n\n';
+    markdown += `Generated on: ${new Date().toLocaleDateString()}\n\n`;
+    
+    for (const suggestion of suggestions) {
+      markdown += `## ${suggestion.title}\n\n`;
+      markdown += `**Type:** ${suggestion.type} | **Impact:** ${suggestion.impact} | **Status:** ${suggestion.status}\n\n`;
+      
+      if (suggestion.metadata?.category) {
+        markdown += `**Category:** ${suggestion.metadata.category}\n\n`;
+      }
+      
+      if (suggestion.metadata?.file_path) {
+        markdown += `**File:** \`${suggestion.metadata.file_path}\`\n\n`;
+      }
+      
+      markdown += `${suggestion.body_md}\n\n`;
+      markdown += '---\n\n';
+    }
+    
+    return markdown;
+  }
+
+  private downloadFile(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  private getDiffSection(suggestion: Suggestion): DiffSection | null {
+    if (!suggestion.metadata?.before || !suggestion.metadata?.after) {
+      return null;
+    }
+
+    return {
+      title: suggestion.title,
+      before: suggestion.metadata.before,
+      after: suggestion.metadata.after,
+      filePath: suggestion.metadata.file_path || 'configuration.yaml'
+    };
   }
 
   render() {
@@ -343,16 +770,43 @@ export class OptimizationsView extends LitElement {
     return html`
       <div class="header">
         <h1 class="title">Configuration Optimizations</h1>
-        <button 
-          class="scan-button" 
-          @click=${this.handleScanClick}
-          ?disabled=${this.loading}
-        >
-          ${this.loading ? '⏳ Scanning...' : '🔍 Run Scan'}
-        </button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          ${this.suggestions.length > 0 ? html`
+            <button 
+              class="export-button"
+              @click=${() => this.exportSuggestions('json')}
+              title="Export as JSON"
+            >
+              📄 JSON
+            </button>
+            <button 
+              class="export-button"
+              @click=${() => this.exportSuggestions('csv')}
+              title="Export as CSV"
+            >
+              📊 CSV
+            </button>
+            <button 
+              class="export-button"
+              @click=${() => this.exportSuggestions('markdown')}
+              title="Export as Markdown"
+            >
+              📝 MD
+            </button>
+          ` : ''}
+          <button 
+            class="scan-button" 
+            @click=${this.handleScanClick}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? '⏳ Scanning...' : '🔍 Run Scan'}
+          </button>
+        </div>
       </div>
 
       <scan-progress @scans-updated=${this.handleScansUpdated}></scan-progress>
+
+      ${this.renderBulkActions()}
 
       ${this.suggestions.length === 0 ? html`
         <div class="empty-state">
@@ -362,73 +816,19 @@ export class OptimizationsView extends LitElement {
         </div>
       ` : html`
         <div class="suggestions-list">
-          ${this.suggestions.map(suggestion => html`
-            <div class="suggestion-card impact-${suggestion.impact}">
-              <div class="suggestion-header">
-                <h3 class="suggestion-title">${suggestion.title}</h3>
-                <span class="impact-badge impact-${suggestion.impact}">${suggestion.impact}</span>
-              </div>
-              <div class="suggestion-body">
-                ${suggestion.body_md}
-                ${suggestion.metadata?.category ? html`
-                  <div style="margin-top: 8px;">
-                    <strong>Category:</strong> ${suggestion.metadata.category}
-                  </div>
-                ` : ''}
-                ${suggestion.metadata?.file_path ? html`
-                  <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text-color, #757575);">
-                    <strong>File:</strong> ${suggestion.metadata.file_path}
-                  </div>
-                ` : ''}
-              </div>
-              <div class="suggestion-actions">
-                <button 
-                  class="action-button btn-view-diff"
-                  @click=${() => this.handleViewDiff(suggestion)}
-                  ?disabled=${!suggestion.metadata || !suggestion.metadata.before}
-                >
-                  ${suggestion.metadata?.before ? 'View Diff' : 'No Diff Available'}
-                </button>
-                ${suggestion.status === 'pending' ? html`
-                  <button 
-                    class="action-button btn-accept"
-                    @click=${() => this.handleSuggestionAction(suggestion.id, 'accepted')}
-                  >
-                    Accept
-                  </button>
-                  <button 
-                    class="action-button btn-reject"
-                    @click=${() => this.handleSuggestionAction(suggestion.id, 'rejected')}
-                  >
-                    Reject
-                  </button>
-                ` : suggestion.status === 'accepted' ? html`
-                  <button 
-                    class="action-button btn-apply"
-                    @click=${() => this.handleApplyClick(suggestion)}
-                    ?disabled=${this.applyingIds.has(suggestion.id)}
-                  >
-                    ${this.applyingIds.has(suggestion.id) ? '⏳ Applying...' : '✨ Apply Changes'}
-                  </button>
-                  <button 
-                    class="action-button btn-reject"
-                    @click=${() => this.handleSuggestionAction(suggestion.id, 'rejected')}
-                  >
-                    Cancel
-                  </button>
-                ` : suggestion.status === 'applied' ? html`
-                  <span class="status-applied">✅ Applied</span>
-                ` : html`
-                  <span class="status-rejected">❌ Rejected</span>
-                `}
-              </div>
-            </div>
-          `)}
+          ${this.suggestions.map(suggestion => this.renderSuggestionCard(suggestion))}
         </div>
       `}
       
       ${this.showDiffModal ? this.renderDiffModal() : ''}
       ${this.showApplyConfirm ? this.renderApplyConfirm() : ''}
+      ${this.showBulkConfirm ? this.renderBulkConfirm() : ''}
+      
+      <file-selector
+        .open=${this.showFileSelector}
+        @close=${this.handleFileSelectorClose}
+        @confirm=${this.handleFileSelection}
+      ></file-selector>
     `;
   }
 
@@ -479,12 +879,14 @@ export class OptimizationsView extends LitElement {
     this.requestUpdate();
     
     try {
-      await apiService.applySuggestion(suggestionId);
-      await this.loadData();
-      this.closeApplyConfirm();
+      const result = await apiService.applySuggestionWithErrorHandling(suggestionId);
+      if (result) {
+        await this.loadData();
+        this.closeApplyConfirm();
+        showToast('Changes applied successfully', 'success');
+      }
     } catch (error) {
-      console.error('Failed to apply suggestion:', error);
-      // Could show error toast here
+      showErrorToast(error, 'apply');
     } finally {
       this.applyingIds.delete(suggestionId);
       this.requestUpdate();
@@ -512,6 +914,173 @@ export class OptimizationsView extends LitElement {
             </button>
             <button class="confirm-button confirm-apply" @click=${this.confirmApply}>
               Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderBulkActions() {
+    const pendingSuggestions = this.suggestions.filter(s => s.status === 'pending');
+    const selectedCount = this.selectedSuggestionIds.size;
+    
+    if (pendingSuggestions.length === 0) {
+      return html``;
+    }
+    
+    const allSelected = selectedCount === pendingSuggestions.length;
+    
+    return html`
+      <div class="bulk-actions ${selectedCount === 0 ? 'hidden' : ''}">
+        <div class="bulk-selection">
+          <input 
+            type="checkbox" 
+            class="select-all-checkbox"
+            .checked=${allSelected}
+            @change=${this.toggleSelectAll}
+          >
+          <span class="bulk-count">
+            ${selectedCount} of ${pendingSuggestions.length} selected
+          </span>
+        </div>
+        <div class="bulk-buttons">
+          <button 
+            class="bulk-button bulk-accept"
+            @click=${() => this.handleBulkAction('accept')}
+            ?disabled=${selectedCount === 0}
+          >
+            Accept Selected (${selectedCount})
+          </button>
+          <button 
+            class="bulk-button bulk-reject"
+            @click=${() => this.handleBulkAction('reject')}
+            ?disabled=${selectedCount === 0}
+          >
+            Reject Selected (${selectedCount})
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderSuggestionCard(suggestion: Suggestion) {
+    const isSelected = this.selectedSuggestionIds.has(suggestion.id);
+    const isPending = suggestion.status === 'pending';
+    
+    return html`
+      <div class="suggestion-card impact-${suggestion.impact} ${isSelected ? 'selected' : ''}">
+        ${isPending ? html`
+          <input 
+            type="checkbox" 
+            class="suggestion-checkbox"
+            .checked=${isSelected}
+            @change=${() => this.toggleSuggestionSelection(suggestion.id)}
+          >
+        ` : ''}
+        
+        <div class="suggestion-content">
+          <div class="suggestion-header">
+            <h3 class="suggestion-title">${suggestion.title}</h3>
+            <span class="impact-badge impact-${suggestion.impact}">${suggestion.impact}</span>
+          </div>
+          <div class="suggestion-body">
+            ${suggestion.body_md}
+            ${suggestion.metadata?.category ? html`
+              <div style="margin-top: 8px;">
+                <strong>Category:</strong> ${suggestion.metadata.category}
+              </div>
+            ` : ''}
+            ${suggestion.metadata?.file_path ? html`
+              <div style="margin-top: 4px; font-size: 12px; color: var(--secondary-text-color, #757575);">
+                <strong>File:</strong> ${suggestion.metadata.file_path}
+              </div>
+            ` : ''}
+          </div>
+          <div class="suggestion-actions">
+            <button 
+              class="action-button btn-view-diff"
+              @click=${() => this.handleViewDiff(suggestion)}
+              ?disabled=${!suggestion.metadata || !suggestion.metadata.before}
+            >
+              ${suggestion.metadata?.before ? 'View Diff' : 'No Diff Available'}
+            </button>
+            ${suggestion.status === 'pending' ? html`
+              <button 
+                class="action-button btn-accept loading-button"
+                @click=${() => this.handleSuggestionAction(suggestion.id, 'accepted')}
+                ?disabled=${this.loadingStates.isLoading(`suggestion-${suggestion.id}`)}
+              >
+                ${this.loadingStates.isLoading(`suggestion-${suggestion.id}`) ? html`
+                  <div class="loading-spinner"></div> Accepting...
+                ` : 'Accept'}
+              </button>
+              <button 
+                class="action-button btn-reject loading-button"
+                @click=${() => this.handleSuggestionAction(suggestion.id, 'rejected')}
+                ?disabled=${this.loadingStates.isLoading(`suggestion-${suggestion.id}`)}
+              >
+                ${this.loadingStates.isLoading(`suggestion-${suggestion.id}`) ? html`
+                  <div class="loading-spinner"></div> Rejecting...
+                ` : 'Reject'}
+              </button>
+            ` : suggestion.status === 'accepted' ? html`
+              <button 
+                class="action-button btn-apply"
+                @click=${() => this.handleApplyClick(suggestion)}
+                ?disabled=${this.applyingIds.has(suggestion.id)}
+              >
+                ${this.applyingIds.has(suggestion.id) ? '⏳ Applying...' : '✨ Apply Changes'}
+              </button>
+              <button 
+                class="action-button btn-reject"
+                @click=${() => this.handleSuggestionAction(suggestion.id, 'rejected')}
+              >
+                Cancel
+              </button>
+            ` : suggestion.status === 'applied' ? html`
+              <span class="status-applied">✅ Applied</span>
+            ` : html`
+              <span class="status-rejected">❌ Rejected</span>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderBulkConfirm() {
+    if (!this.bulkAction) return '';
+    
+    const action = this.bulkAction;
+    const selectedCount = this.selectedSuggestionIds.size;
+    
+    return html`
+      <div class="bulk-confirm-modal" @click=${this.closeBulkConfirm}>
+        <div class="bulk-confirm-content" @click=${(e: Event) => e.stopPropagation()}>
+          <h3 class="bulk-confirm-title">
+            ${action === 'accept' ? 'Accept' : 'Reject'} Multiple Suggestions
+          </h3>
+          <div class="bulk-confirm-message">
+            <p>Are you sure you want to ${action} ${selectedCount} suggestion${selectedCount !== 1 ? 's' : ''}?</p>
+            ${action === 'accept' ? html`
+              <p>Accepted suggestions can then be applied to modify your configuration files.</p>
+            ` : html`
+              <p>Rejected suggestions will be marked as dismissed and cannot be applied.</p>
+            `}
+          </div>
+          <div class="bulk-confirm-actions">
+            <button class="confirm-button confirm-cancel" @click=${this.closeBulkConfirm}>
+              Cancel
+            </button>
+            <button 
+              class="confirm-button ${action === 'accept' ? 'confirm-apply' : 'bulk-reject'} loading-button"
+              @click=${this.confirmBulkAction}
+              ?disabled=${this.loadingStates.isLoading('bulk-action')}
+            >
+              ${this.loadingStates.isLoading('bulk-action') ? html`
+                <div class="loading-spinner"></div> Processing...
+              ` : `${action === 'accept' ? 'Accept' : 'Reject'} ${selectedCount} Suggestion${selectedCount !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>

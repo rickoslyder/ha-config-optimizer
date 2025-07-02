@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-01-02
+
+### Added - Major UI/UX Enhancements 🎉
+- **File Selector Component**: Interactive tree view with expand/collapse, file filtering, and "Select All" functionality
+- **Real-time WebSocket Progress**: Live scan progress tracking with current file analysis and completion percentage
+- **Bulk Operations**: Select multiple suggestions for batch accept/reject operations with confirmation dialogs
+- **Export Functionality**: Export suggestions in JSON, CSV, and Markdown formats with selected or all suggestions
+- **LLM Connection Testing**: "Test Connection" button in LLM profile modal with real API validation
+- **Enhanced Error Handling**: User-friendly error messages with actionable suggestions for different failure scenarios
+- **Loading States**: Visual loading indicators for all async operations with proper disabled states
+- **API Key Encryption**: Secure storage of LLM API keys with automatic encryption and backward compatibility migration
+
+### New Features
+- **WebSocket Endpoint**: Real-time scan progress broadcasting with automatic connection management
+- **Bulk Suggestion Management**: Checkbox selection, count tracking, and batch operations
+- **Data Export System**: Multiple format support with proper file download handling
+- **Error Recovery**: Comprehensive error classification and user guidance system
+- **Cryptographic Security**: Industry-standard encryption for sensitive API keys
+- **Connection Validation**: Live testing of LLM provider endpoints with detailed feedback
+
+### Enhanced User Experience
+- **Interactive File Selection**: Tree navigation with file metadata (size, modified date)
+- **Live Progress Updates**: Real-time WebSocket updates with polling fallback
+- **Visual Feedback**: Loading spinners, progress bars, and status indicators
+- **Error Guidance**: Context-aware error messages with resolution suggestions
+- **Batch Operations**: Efficient handling of multiple suggestions simultaneously
+- **Secure Configuration**: Encrypted storage of sensitive configuration data
+
+### Technical Improvements
+- **WebSocket Integration**: FastAPI WebSocket support with connection management
+- **Encryption Layer**: Cryptography-based secure key storage with PBKDF2 key derivation
+- **Error Handling Framework**: Structured error parsing and user-friendly messaging
+- **Loading State Management**: Centralized loading state tracking with automatic cleanup
+- **File Tree API**: Hierarchical file structure with metadata for improved navigation
+- **Export Utilities**: Client-side file generation and download with format validation
+
+### Security Enhancements
+- **API Key Protection**: Encrypted storage with automatic migration of existing keys
+- **WebSocket Security**: Proper authentication and connection validation
+- **Input Validation**: Enhanced validation for file paths and user inputs
+- **Error Information**: Secure error handling without exposing sensitive details
+
+### Testing & Quality
+- **Integration Testing**: Comprehensive scan engine validation with real LLM providers
+- **Error Scenarios**: Validated error handling across all user workflows
+- **Security Testing**: Encryption implementation and WebSocket security validation
+- **UI Testing**: All new components and interactions tested with real data
+
+### Breaking Changes
+- None - All changes are backward compatible
+
+### Migration Notes
+- API keys will be automatically encrypted on first startup
+- WebSocket connections are optional - UI falls back to polling if unavailable
+- All new features are additive and do not affect existing functionality
+
+## [0.1.4] - 2025-01-02
+
+### Added
+- Comprehensive LLM provider reference guide (LLM_PROVIDERS.md) with latest models
+- Modal dialog component for adding/editing LLM profiles
+- Support for latest LLM models including OpenAI o4-mini, Claude 4, Gemini 2.5
+- Update LLM profile functionality in settings view
+- Visual provider presets for easy configuration
+
+### Fixed
+- Edit button in LLM providers section now opens modal dialog
+- Add LLM Profile button now properly creates new profiles
+- Settings view properly handles profile creation and updates
+
+### Changed
+- Updated default OpenAI model from gpt-3.5-turbo to gpt-o4-mini
+- Increased default context tokens from 4000 to 128000
+- Enhanced CLAUDE.md with reference to LLM providers guide
+
+### Documentation
+- Added comprehensive LLM_PROVIDERS.md with model specifications, pricing, and use cases
+- Updated CLAUDE.md to reference the LLM providers guide for AI implementations
+
 ## [0.1.3] - 2025-01-02
 
 ### Fixed
@@ -111,7 +190,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.4...v0.2.0
+[0.1.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.0...v0.1.1

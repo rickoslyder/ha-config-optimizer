@@ -41,9 +41,9 @@ def init_default_data():
                 name="Default OpenAI",
                 provider="openai",
                 endpoint="https://api.openai.com/v1",
-                context_tokens=4000,
+                context_tokens=128000,
                 role="optimize",
-                model_name="gpt-3.5-turbo",
+                model_name="o4-mini",
                 is_active=1
             )
             db.add(default_profile)

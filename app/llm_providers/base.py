@@ -46,6 +46,16 @@ class BaseLLMProvider(ABC):
         """Test if the provider is accessible and configured correctly."""
         pass
     
+    async def list_models(self) -> list[str]:
+        """List available models for this provider.
+        
+        Returns:
+            List of model names/IDs
+        """
+        # Default implementation returns empty list
+        # Providers should override this if they support dynamic model listing
+        return []
+    
     def estimate_tokens(self, text: str) -> int:
         """Rough estimation of token count for text."""
         # Simple estimation: ~4 characters per token

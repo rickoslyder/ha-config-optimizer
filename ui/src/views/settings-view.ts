@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiService, type Settings, type LLMProfile } from '../services/api.js';
+import '../components/llm-profile-modal.js';
 
 @customElement('settings-view')
 export class SettingsView extends LitElement {
@@ -12,6 +13,12 @@ export class SettingsView extends LitElement {
 
   @state()
   private loading = false;
+
+  @state()
+  private showProfileModal = false;
+
+  @state()
+  private editingProfile: LLMProfile | null = null;
 
   static styles = css`
     :host {
@@ -192,8 +199,8 @@ export class SettingsView extends LitElement {
     const updatedSettings = {
       yaml_includes: formData.get('yaml_includes')?.toString().split('\n').filter(Boolean) || [],
       yaml_excludes: formData.get('yaml_excludes')?.toString().split('\n').filter(Boolean) || [],
-      cron_expr: formData.get('cron_expr')?.toString() || null,
-      db_dsn: formData.get('db_dsn')?.toString() || null,
+      cron_expr: formData.get('cron_expr')?.toString() || undefined,
+      db_dsn: formData.get('db_dsn')?.toString() || undefined,
       db_type: formData.get('db_type')?.toString() || 'sqlite',
     };
 
@@ -202,6 +209,16 @@ export class SettingsView extends LitElement {
     } catch (error) {
       console.error('Failed to save settings:', error);
     }
+  }
+
+  private handleAddProfile() {
+    this.editingProfile = null;
+    this.showProfileModal = true;
+  }
+
+  private handleEditProfile(profile: LLMProfile) {
+    this.editingProfile = profile;
+    this.showProfileModal = true;
   }
 
   private async handleDeleteProfile(profileId: number) {
@@ -213,6 +230,32 @@ export class SettingsView extends LitElement {
     } catch (error) {
       console.error('Failed to delete profile:', error);
     }
+  }
+
+  private async handleSaveProfile(event: CustomEvent) {
+    const profileData = event.detail;
+    
+    try {
+      if (this.editingProfile?.id) {
+        // Update existing profile
+        await apiService.updateLLMProfile(this.editingProfile.id, profileData);
+      } else {
+        // Create new profile
+        await apiService.createLLMProfile(profileData);
+      }
+      
+      this.showProfileModal = false;
+      this.editingProfile = null;
+      await this.loadData();
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      alert('Failed to save profile. Please check your settings and try again.');
+    }
+  }
+
+  private handleCloseModal() {
+    this.showProfileModal = false;
+    this.editingProfile = null;
   }
 
   render() {
@@ -297,7 +340,7 @@ export class SettingsView extends LitElement {
                 <div class="profile-actions">
                   <button 
                     class="button button-secondary"
-                    @click=${() => console.log('Edit profile:', profile.id)}
+                    @click=${() => this.handleEditProfile(profile)}
                   >
                     Edit
                   </button>
@@ -315,7 +358,7 @@ export class SettingsView extends LitElement {
 
         <button 
           class="button button-secondary"
-          @click=${() => console.log('Add new profile')}
+          @click=${this.handleAddProfile}
           style="margin-top: 16px;"
         >
           + Add LLM Profile
@@ -352,6 +395,14 @@ export class SettingsView extends LitElement {
           <button type="submit" class="button">Save Database Settings</button>
         </form>
       </div>
+
+      <!-- LLM Profile Modal -->
+      <llm-profile-modal
+        .open=${this.showProfileModal}
+        .profile=${this.editingProfile}
+        @close=${this.handleCloseModal}
+        @save=${this.handleSaveProfile}
+      ></llm-profile-modal>
     `;
   }
 }

@@ -2,6 +2,8 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiService, type Suggestion, type Scan } from '../services/api.js';
 import '../components/scan-progress.js';
+import '../components/file-selector.js';
+import { showToast } from '../components/toast-notification.js';
 
 @customElement('automations-view')
 export class AutomationsView extends LitElement {
@@ -19,6 +21,9 @@ export class AutomationsView extends LitElement {
 
   @state()
   private showYamlModal = false;
+
+  @state()
+  private showFileSelector = false;
 
   static styles = css`
     :host {
@@ -341,6 +346,12 @@ export class AutomationsView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.loadData();
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   private handleScansUpdated(event: CustomEvent) {
@@ -374,17 +385,30 @@ export class AutomationsView extends LitElement {
     }
   }
 
-  private async handleScanClick() {
+  private handleScanClick() {
+    this.showFileSelector = true;
+  }
+
+  private async handleFileSelection(event: CustomEvent) {
+    const { selectedFiles } = event.detail;
+    this.showFileSelector = false;
+    
     this.loading = true;
     try {
       // Create automation-specific scan
-      await apiService.createAutomationScan([]);
+      await apiService.createAutomationScan(selectedFiles);
       await this.loadData();
+      showToast(`Automation scan started for ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}`, 'success');
     } catch (error) {
       console.error('Failed to create automation scan:', error);
+      showToast('Failed to start automation scan', 'error');
     } finally {
       this.loading = false;
     }
+  }
+
+  private handleFileSelectorClose() {
+    this.showFileSelector = false;
   }
 
   private async handleSuggestionAction(suggestionId: number, action: string) {
@@ -406,14 +430,21 @@ export class AutomationsView extends LitElement {
     this.selectedSuggestion = null;
   }
 
+  private handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && this.showYamlModal) {
+      this.closeYamlModal();
+    }
+  }
+
   private async copyYamlToClipboard() {
     if (!this.selectedSuggestion?.metadata?.yaml) return;
     
     try {
       await navigator.clipboard.writeText(this.selectedSuggestion.metadata.yaml);
-      // Could add a toast notification here
+      showToast('YAML copied to clipboard', 'success');
     } catch (error) {
       console.error('Failed to copy YAML:', error);
+      showToast('Failed to copy YAML', 'error');
     }
   }
 
@@ -453,6 +484,12 @@ export class AutomationsView extends LitElement {
       `}
       
       ${this.showYamlModal ? this.renderYamlModal() : ''}
+      
+      <file-selector
+        .open=${this.showFileSelector}
+        @close=${this.handleFileSelectorClose}
+        @confirm=${this.handleFileSelection}
+      ></file-selector>
     `;
   }
 

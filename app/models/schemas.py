@@ -113,3 +113,4 @@ class Log(Base):
     message = Column(Text)
     component = Column(String(100), nullable=True)  # Which part of system
     scan_id = Column(Integer, ForeignKey("scans.id"), nullable=True)
+    details = Column(Text, nullable=True)  # Additional details or stack trace

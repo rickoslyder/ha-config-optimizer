@@ -2,8 +2,10 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './tab-navigation.js';
 import './scan-progress.js';
+import './toast-notification.js';
 import '../views/optimizations-view.js';
 import '../views/automations-view.js';
+import '../views/diffs-view.js';
 import '../views/logs-view.js';
 import '../views/settings-view.js';
 import type { TabId } from './tab-navigation.js';
@@ -215,13 +217,7 @@ export class HaConfigOptimizer extends LitElement {
       case 'automations':
         return html`<automations-view></automations-view>`;
       case 'diffs':
-        return html`
-          <div class="placeholder">
-            <h2>📝 Configuration Diffs</h2>
-            <p>Review and apply changes to your configuration files.</p>
-            <p><em>Coming soon...</em></p>
-          </div>
-        `;
+        return html`<diffs-view></diffs-view>`;
       case 'logs':
         return html`<logs-view></logs-view>`;
       case 'settings':
@@ -277,6 +273,8 @@ export class HaConfigOptimizer extends LitElement {
       <div class="content">
         ${this.renderView()}
       </div>
+      
+      <toast-notification></toast-notification>
     `;
   }
 }
