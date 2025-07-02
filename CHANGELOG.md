@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2025-01-02
+
+### Fixed - File Picker Now Shows HA Configuration Files! 🎉
+- **Fixed Path Detection**: Changed primary path from `/config` to `/homeassistant` based on debug analysis
+- **Enhanced File Tree Logging**: Added detailed logging to track file inclusion/exclusion during tree building
+- **Updated AppArmor**: Added `/homeassistant/**` permissions to AppArmor profile
+- **Confirmed Working**: Path detection now finds configuration.yaml, scenes.yaml, scripts.yaml, and other HA config files
+
+### Root Cause Resolution
+Debug analysis revealed that:
+- `/config` exists but is empty in the user's environment
+- `/homeassistant` contains all the actual Home Assistant configuration files
+- The path priority order needed to be updated to check `/homeassistant` first
+
+### Technical Details
+- Path detection now prioritizes `/homeassistant` as the primary mount point
+- Added comprehensive logging to track which files are included/excluded
+- AppArmor profile includes permissions for the correct path
+- File tree API will now return the actual HA configuration files
+
+Users should now see their configuration.yaml, automations.yaml, scripts.yaml, scenes.yaml, and other YAML files in the file picker!
+
 ## [0.2.7] - 2025-01-02
 
 ### Added - Comprehensive File Picker Debugging 🔍
@@ -326,7 +348,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...v0.2.5

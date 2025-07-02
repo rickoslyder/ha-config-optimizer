@@ -34,6 +34,7 @@ profile llm-config-optimizer flags=(attach_disconnected,mediate_deleted) {
   /usr/local/lib/** mr,
 
   # Access to mapped volumes specified in config.json
+  /homeassistant/** rw,
   /homeassistant_config/** rw,
   /backup/** rw,
   /addon_configs/** rw,

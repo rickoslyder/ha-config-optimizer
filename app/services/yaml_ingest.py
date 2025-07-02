@@ -20,12 +20,12 @@ def get_config_path() -> str:
     logger.info(f"Addon environment detected: {addon_env} (/data/options.json exists: {addon_env})")
     
     if addon_env:
-        # List all possible paths based on research
+        # List all possible paths based on research and actual debug results
         possible_paths = [
-            "/config",  # Most common based on community reports
+            "/homeassistant",  # CONFIRMED: This is where the files actually are!
+            "/config",  # Empty in user's case but still check
             "/homeassistant/config",  # Suggested by user in forum
             "/homeassistant_config",  # Based on HA docs pattern
-            "/homeassistant",  # Alternative interpretation
         ]
         
         logger.info("Checking possible mount paths for homeassistant_config:")
@@ -165,12 +165,19 @@ class YAMLIngestService:
                         # For files, only include YAML and common config files
                         if item.is_file():
                             if item.suffix.lower() in ['.yaml', '.yml', '.json', '.txt', '.md']:
+                                logger.info(f"Including file: {item.name} (size: {item.stat().st_size})")
                                 children.append(build_tree_node(item))
+                            else:
+                                logger.info(f"Skipping file (wrong extension): {item.name}")
                         else:
                             # Include all directories but recursively
+                            logger.info(f"Processing directory: {item.name}")
                             child_node = build_tree_node(item)
                             if child_node.get("children"):  # Only include dirs with content
+                                logger.info(f"Including directory: {item.name} (has {len(child_node.get('children', []))} children)")
                                 children.append(child_node)
+                            else:
+                                logger.info(f"Skipping empty directory: {item.name}")
                 except PermissionError:
                     pass  # Skip directories we can't read
                 
@@ -183,9 +190,17 @@ class YAMLIngestService:
         
         try:
             root_node = build_tree_node(self.config_path)
+            logger.info(f"Root node built: {root_node.get('name', 'UNKNOWN')}")
+            logger.info(f"Root node children count: {len(root_node.get('children', []))}")
+            
             # Return the children of the root as the top level
             result = {"files": root_node.get("children", [])}
             logger.info(f"File tree result: {len(result['files'])} top-level items")
+            
+            # Log details of returned files
+            for i, file_item in enumerate(result['files'][:5]):  # First 5 files
+                logger.info(f"  File {i+1}: {file_item.get('name', 'UNKNOWN')} ({file_item.get('type', 'UNKNOWN')})")
+            
             logger.info("=== FILE TREE DEBUG END ===")
             return result
         except Exception as e:
