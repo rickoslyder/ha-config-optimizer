@@ -49,22 +49,50 @@ export interface LLMProfile {
 }
 
 class ApiService {
-  private baseUrl = '/api';
+  private baseUrl: string;
+
+  constructor() {
+    // Check if we're running through Home Assistant Ingress
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    
+    // If the path contains 'api/hassio_ingress', we're in an Ingress environment
+    if (pathSegments.includes('api') && pathSegments.includes('hassio_ingress')) {
+      // Extract the Ingress base path (e.g., /api/hassio_ingress/...)
+      const ingressIndex = pathSegments.indexOf('hassio_ingress');
+      const basePath = '/' + pathSegments.slice(0, ingressIndex + 2).join('/');
+      this.baseUrl = basePath + '/api';
+      console.log('Detected Home Assistant Ingress environment, using base URL:', this.baseUrl);
+    } else {
+      // Development or direct access
+      this.baseUrl = '/api';
+      console.log('Using standard base URL:', this.baseUrl);
+    }
+  }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log('Making API request to:', url);
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Request failed:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   // Scan API

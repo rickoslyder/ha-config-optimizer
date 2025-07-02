@@ -7,6 +7,7 @@ import '../views/automations-view.js';
 import '../views/logs-view.js';
 import '../views/settings-view.js';
 import type { TabId } from './tab-navigation.js';
+import { apiService } from '../services/api.js';
 
 @customElement('ha-config-optimizer')
 export class HaConfigOptimizer extends LitElement {
@@ -15,6 +16,15 @@ export class HaConfigOptimizer extends LitElement {
 
   @state()
   private hasRunningScans = false;
+
+  @state()
+  private isLoading = true;
+
+  @state()
+  private error: string | null = null;
+
+  @state()
+  private isConnected = false;
 
   static styles = css`
     :host {
@@ -91,7 +101,95 @@ export class HaConfigOptimizer extends LitElement {
         --divider-color: #404040;
       }
     }
+
+    .loading, .error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--divider-color, #e0e0e0);
+      border-top-color: var(--primary-color, #03a9f4);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      color: var(--optimizer-error, #d32f2f);
+    }
+
+    .error h2 {
+      margin-bottom: 16px;
+    }
+
+    .error-details {
+      background: var(--card-background-color, #ffffff);
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      max-width: 600px;
+      font-family: monospace;
+      font-size: 12px;
+      text-align: left;
+    }
   `;
+
+  async connectedCallback() {
+    super.connectedCallback();
+    console.log('HA Config Optimizer component connected');
+    
+    // Add debug info
+    console.log('Current location:', window.location.href);
+    console.log('Path segments:', window.location.pathname.split('/').filter(Boolean));
+    
+    await this.checkConnection();
+  }
+
+  async checkConnection() {
+    try {
+      console.log('Checking API connection...');
+      
+      // Use the apiService to get the correct base URL
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      let healthUrl = '/health';
+      
+      // If we're in an Ingress environment, adjust the health URL
+      if (pathSegments.includes('api') && pathSegments.includes('hassio_ingress')) {
+        const ingressIndex = pathSegments.indexOf('hassio_ingress');
+        const basePath = '/' + pathSegments.slice(0, ingressIndex + 2).join('/');
+        healthUrl = basePath + '/health';
+      }
+      
+      console.log('Health check URL:', healthUrl);
+      const response = await fetch(healthUrl);
+      this.isConnected = response.ok;
+      
+      if (this.isConnected) {
+        console.log('API connection successful');
+        this.error = null;
+      } else {
+        console.error('API health check failed:', response.status);
+        this.error = `API health check failed with status: ${response.status}`;
+      }
+    } catch (error) {
+      console.error('Failed to connect to API:', error);
+      this.error = `Failed to connect to API: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.isConnected = false;
+    } finally {
+      this.isLoading = false;
+    }
+  }
 
   private handleTabChange(event: CustomEvent) {
     this.activeTab = event.detail.tabId;
@@ -126,6 +224,26 @@ export class HaConfigOptimizer extends LitElement {
   }
 
   render() {
+    if (this.isLoading) {
+      return html`
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <p>Loading Config Optimizer...</p>
+        </div>
+      `;
+    }
+
+    if (this.error) {
+      return html`
+        <div class="error">
+          <h2>❌ Connection Error</h2>
+          <p>Unable to connect to the Config Optimizer API</p>
+          <div class="error-details">${this.error}</div>
+          <button @click=${() => window.location.reload()}>Reload Page</button>
+        </div>
+      `;
+    }
+
     return html`
       <div class="header">
         <h1 class="title">Config Optimizer</h1>
