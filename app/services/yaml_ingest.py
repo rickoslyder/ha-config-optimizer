@@ -11,14 +11,73 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_config_path() -> str:
+    """Get the appropriate config path based on environment."""
+    # Check if running in Home Assistant addon environment
+    if os.path.exists("/data/options.json"):
+        # With homeassistant_config mapping, HA config is at /homeassistant
+        if os.path.exists("/homeassistant"):
+            return "/homeassistant"
+        # Fallback to old mapping if it exists
+        elif os.path.exists("/config"):
+            return "/config"
+    
+    # Development environment - use test-config directory
+    dev_config = Path(__file__).parent.parent.parent / "test-config"
+    if dev_config.exists():
+        return str(dev_config)
+    
+    # Fallback to current directory
+    return "."
+
+
 class YAMLIngestService:
     """Service for reading and parsing Home Assistant YAML files."""
     
-    def __init__(self, config_path: str = "/config"):
+    def __init__(self, config_path: Optional[str] = None):
+        if config_path is None:
+            config_path = get_config_path()
+        
         self.config_path = Path(config_path)
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.width = 4096
+        
+        logger.info(f"Initialized YAMLIngestService with config path: {self.config_path}")
+        
+        # Validate config path exists and is readable
+        if not self.config_path.exists():
+            logger.warning(f"Config path does not exist: {self.config_path}")
+        elif not self.config_path.is_dir():
+            logger.warning(f"Config path is not a directory: {self.config_path}")
+        else:
+            logger.info(f"Config path is valid and accessible: {self.config_path}")
+    
+    def _validate_file_path(self, file_path: str) -> bool:
+        """Validate that a file path is safe and within the config directory."""
+        try:
+            # Resolve the full path and ensure it's within the config directory
+            full_path = (self.config_path / file_path).resolve()
+            config_path_resolved = self.config_path.resolve()
+            
+            # Check if the path is within the config directory
+            try:
+                full_path.relative_to(config_path_resolved)
+            except ValueError:
+                logger.warning(f"Path traversal attempt blocked: {file_path}")
+                return False
+            
+            # Only allow certain file extensions for security
+            allowed_extensions = {'.yaml', '.yml', '.json', '.txt', '.md'}
+            if full_path.suffix.lower() not in allowed_extensions:
+                logger.warning(f"File extension not allowed: {file_path}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating file path {file_path}: {e}")
+            return False
     
     def get_file_tree(self) -> Dict[str, Any]:
         """Get a tree structure of available files and directories."""
@@ -72,6 +131,11 @@ class YAMLIngestService:
     
     def read_yaml_file(self, file_path: str) -> Optional[Dict[str, Any]]:
         """Read and parse a single YAML file."""
+        # Validate file path for security
+        if not self._validate_file_path(file_path):
+            logger.error(f"Invalid or unsafe file path: {file_path}")
+            return None
+        
         full_path = self.config_path / file_path
         
         try:
@@ -88,6 +152,11 @@ class YAMLIngestService:
     
     def get_file_hash(self, file_path: str) -> Optional[str]:
         """Get SHA-256 hash of a file for change detection."""
+        # Validate file path for security
+        if not self._validate_file_path(file_path):
+            logger.error(f"Invalid or unsafe file path: {file_path}")
+            return None
+        
         full_path = self.config_path / file_path
         
         try:
@@ -115,6 +184,11 @@ class YAMLIngestService:
     
     def write_yaml_file(self, file_path: str, content: Dict[str, Any]) -> bool:
         """Write content back to a YAML file."""
+        # Validate file path for security
+        if not self._validate_file_path(file_path):
+            logger.error(f"Invalid or unsafe file path: {file_path}")
+            return False
+        
         full_path = self.config_path / file_path
         
         try:

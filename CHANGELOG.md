@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-02
+
+### Fixed - File Access and Security 🔒
+- **Fixed File Path Resolution**: File selector now correctly detects and uses appropriate config directory based on environment
+- **Enhanced Path Security**: Added comprehensive path validation to prevent directory traversal attacks and restrict file access to approved extensions
+- **Environment-Aware Path Handling**: Improved detection between development and Home Assistant addon environments
+- **File Selector UI Fix**: Resolved issue where file selector was showing unexpected paths like desktop screenshots
+
+### Security Enhancements
+- **Home Assistant Addon Compliance**: Updated `config.yaml` to use proper `homeassistant_config` mapping instead of generic `config:rw`
+- **AppArmor Security Profile**: Added comprehensive AppArmor profile with proper restrictions for container security
+- **Security Flags**: Added all required Home Assistant addon security configurations (host_network: false, privileged: false, etc.)
+- **File Extension Filtering**: Restricted file access to only approved extensions (.yaml, .yml, .json, .txt, .md)
+
+### Technical Improvements
+- **Robust Environment Detection**: Enhanced `get_config_path()` function to properly handle addon vs development environments
+- **Path Validation**: All file operations now validate paths before execution to prevent security vulnerabilities
+- **Enhanced Logging**: Added comprehensive logging for debugging file access and security monitoring
+- **Backward Compatibility**: Maintained support for both new (`/homeassistant`) and legacy (`/config`) path mappings
+
+### Development Experience
+- **Test Configuration**: Added sample configuration files in `test-config/` directory for development environment
+- **Better Error Handling**: Improved error messages for file access issues with fallback mechanisms
+- **Security Testing**: Validated all security controls with comprehensive test scenarios
+
+### Migration Notes
+- File selector will now work correctly in both development and production environments
+- Path resolution automatically adapts to the detected environment
+- All security enhancements are backward compatible with existing functionality
+
 ## [0.2.0] - 2025-01-02
 
 ### Added - Major UI/UX Enhancements 🎉
@@ -190,7 +220,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.2...v0.1.3

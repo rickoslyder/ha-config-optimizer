@@ -1,0 +1,86 @@
+#include <tunables/global>
+
+profile llm-config-optimizer flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  capability,
+  file,
+  signal,
+  
+  # Networking
+  network inet dgram,
+  network inet stream,
+  network inet6 dgram,
+  network inet6 stream,
+  network netlink raw,
+
+  # System access
+  /usr/bin/** ix,
+  /bin/** ix,
+  /sbin/** ix,
+  /usr/sbin/** ix,
+  /lib/** ix,
+  /usr/lib/** ix,
+
+  # Python access
+  /usr/bin/python* ix,
+  /usr/local/bin/python* ix,
+  /opt/python/** ix,
+
+  # Addon specific paths
+  /usr/local/lib/python*/site-packages/** r,
+  /usr/local/lib/python*/dist-packages/** r,
+  /opt/llm-config-optimizer/** r,
+  /app/** r,
+
+  # Configuration access - read-only for Home Assistant config
+  /homeassistant/** r,
+  /config/** r,
+
+  # Addon data - read/write
+  /data/** rw,
+  /addon_configs/** rw,
+  /backup/** rw,
+
+  # System files
+  /etc/resolv.conf r,
+  /etc/hosts r,
+  /etc/ssl/certs/** r,
+  /etc/ca-certificates/** r,
+  /usr/share/ca-certificates/** r,
+
+  # Temporary files
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Process and memory
+  /proc/version r,
+  /proc/sys/kernel/pid_max r,
+  /proc/*/stat r,
+  /proc/*/status r,
+  /proc/*/cmdline r,
+  /sys/fs/cgroup/** r,
+
+  # Deny dangerous operations
+  deny /proc/*/mem rw,
+  deny /proc/kcore rw,
+  deny /proc/kmem rw,
+  deny /proc/sys/kernel/** w,
+  deny /sys/kernel/security/** rw,
+  deny /sys/power/** rw,
+  deny mount,
+  deny umount,
+  deny ptrace,
+  deny signal send set=(kill term),
+
+  # Deny network binding except localhost
+  deny network inet bind,
+  deny network inet6 bind,
+  allow network inet bind addr=127.0.0.1,
+  allow network inet6 bind addr=::1,
+
+  # Deny raw sockets
+  deny network raw,
+  deny network packet,
+}

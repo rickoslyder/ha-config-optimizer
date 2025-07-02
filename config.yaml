@@ -1,7 +1,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: "LLM Config Optimizer"
 description: "AI-powered Home Assistant configuration analysis and optimization using multiple LLM providers"
-version: "0.2.0"
+version: "0.2.1"
 slug: "llm-config-optimizer"
 url: "https://github.com/rickoslyder/ha-config-optimizer"
 
@@ -28,10 +28,24 @@ panel_title: "Config Optimizer"
 homeassistant_api: true
 hassio_api: true
 
-# File system access
+# File system access - using proper HA addon security mapping
 map:
-  - "config:rw"
-  - "backup:rw"
+  - homeassistant_config
+  - backup:rw
+  - addon_config:rw
+
+# Security configuration
+host_network: false
+host_dbus: false
+host_ipc: false
+host_pid: false
+privileged: false
+full_access: false
+apparmor: true
+
+# Additional security measures
+tmpfs: true
+timeout: 30
 
 # Default options
 options:

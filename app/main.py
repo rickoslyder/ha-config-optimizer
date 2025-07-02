@@ -15,7 +15,7 @@ from app.utils.migrate_encryption import migrate_api_keys_to_encrypted
 
 def is_addon_environment() -> bool:
     """Check if running in Home Assistant addon environment."""
-    return os.path.exists("/data/options.json") and os.path.exists("/config")
+    return os.path.exists("/data/options.json") and (os.path.exists("/homeassistant") or os.path.exists("/config"))
 
 
 def create_app() -> FastAPI:
