@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-01-02
+
+### Fixed - AppArmor Profile Restoration 🔐
+- **Added AppArmor Profile**: Created proper `apparmor.txt` file with minimal security profile
+- **Enabled AppArmor**: Added `apparmor: true` to config.yaml to properly configure AppArmor support
+- **Fixed Unload Error**: Resolved "Can't unload profile" error that occurred after v0.2.4
+
+### Root Cause
+Home Assistant was expecting an AppArmor profile because the addon was previously installed with one. Removing the profile in v0.2.4 caused HA to fail when trying to unload a non-existent profile. This version properly implements AppArmor support.
+
+### Technical Details
+- Created minimal AppArmor profile based on official Home Assistant examples
+- Profile includes necessary permissions for Python, FastAPI, and LLM API access
+- Properly restricts file system access to only mapped directories
+- Follows Home Assistant security best practices
+
+The addon now has proper AppArmor support, resolving both the startup and uninstall issues.
+
 ## [0.2.4] - 2025-01-02
 
 ### Fixed - AppArmor Startup Issue 🛠️
@@ -267,7 +285,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...v0.2.2

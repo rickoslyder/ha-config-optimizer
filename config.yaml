@@ -1,7 +1,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: "LLM Config Optimizer"
 description: "AI-powered Home Assistant configuration analysis and optimization using multiple LLM providers"
-version: "0.2.4"
+version: "0.2.5"
 slug: "llm-config-optimizer"
 url: "https://github.com/rickoslyder/ha-config-optimizer"
 
@@ -33,6 +33,9 @@ map:
   - homeassistant_config:rw
   - backup:rw
   - addon_config:rw
+
+# Security
+apparmor: true
 
 # Default options
 options:

@@ -1,0 +1,49 @@
+#include <tunables/global>
+
+profile llm-config-optimizer flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/python>
+
+  # Capabilities
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-Overlay
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
+
+  # Access to options.json and other files within your addon
+  /data/** rw,
+
+  # Python
+  /usr/local/bin/python* ix,
+  /usr/local/lib/python*/site-packages/** mr,
+  /usr/local/lib/** mr,
+
+  # Access to mapped volumes specified in config.json
+  /homeassistant/** rw,
+  /backup/** rw,
+  /addon_configs/** rw,
+  /config/** rw,
+
+  # Network access for LLM API calls
+  network,
+  
+  # Additional Python/FastAPI requirements
+  /etc/passwd r,
+  /etc/group r,
+  /proc/*/mounts r,
+}
