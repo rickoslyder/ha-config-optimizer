@@ -1,6 +1,7 @@
 """
 Settings and configuration API endpoints.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -8,11 +9,11 @@ from typing import List
 from app.models.database import get_db
 from app.models.schemas import Settings, LLMProfile
 from app.models.pydantic_models import SettingsResponse, SettingsUpdate, LLMProfileResponse, LLMProfileCreate, LLMProfileUpdate
-from app.llm_providers import get_llm_provider
 from app.utils.crypto import encrypt_api_key, decrypt_api_key, is_api_key_encrypted
 from app.services.llm_factory import LLMProviderFactory
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=SettingsResponse)
@@ -135,10 +136,22 @@ async def get_available_models(profile_id: int, db: Session = Depends(get_db)):
         "model_name": profile.model_name
     }
     
-    # Get provider instance
-    provider = get_llm_provider(profile.provider, config)
+    # Create a temporary profile for provider creation
+    temp_profile = LLMProfile(
+        name="temp_models",
+        provider=profile.provider,
+        endpoint=profile.endpoint,
+        model_name=profile.model_name,
+        context_tokens=profile.context_tokens,
+        api_key=api_key,
+        role="optimize",
+        is_active=True
+    )
+    
+    # Get provider instance using factory
+    provider = LLMProviderFactory.create_provider(temp_profile)
     if not provider:
-        raise HTTPException(status_code=400, detail=f"Unknown provider: {profile.provider}")
+        raise HTTPException(status_code=400, detail=f"Failed to create provider for {profile.provider}")
     
     try:
         # Get available models
@@ -156,6 +169,8 @@ async def get_available_models(profile_id: int, db: Session = Depends(get_db)):
 @router.post("/llm-profiles/test-connection")
 async def test_llm_connection(profile: LLMProfileCreate):
     """Test connection to an LLM provider."""
+    logger.info(f"Testing connection for provider: {profile.provider}")
+    
     # Handle API key - it might be encrypted or plaintext from the frontend
     api_key = ""
     if profile.api_key:
@@ -165,7 +180,8 @@ async def test_llm_connection(profile: LLMProfileCreate):
                 api_key = decrypt_api_key(profile.api_key)
             else:
                 api_key = profile.api_key
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error handling API key: {e}")
             # If decryption fails, treat as plaintext
             api_key = profile.api_key
     
@@ -173,44 +189,66 @@ async def test_llm_connection(profile: LLMProfileCreate):
         "api_key": api_key,
         "endpoint": profile.endpoint,
         "context_tokens": profile.context_tokens,
-        "model_name": profile.model_name
+        "model_name": profile.model_name,
+        "provider": profile.provider
     }
     
     # Validate required fields based on provider
     if profile.provider != 'ollama' and not api_key:
+        logger.warning(f"API key missing for provider: {profile.provider}")
         raise HTTPException(status_code=400, detail="API key is required for this provider")
     
     if not profile.endpoint or not profile.model_name:
+        logger.warning(f"Missing endpoint or model for provider: {profile.provider}")
         raise HTTPException(status_code=400, detail="Endpoint and model name are required")
     
     # Get provider instance
-    provider = get_llm_provider(profile.provider, config)
-    if not provider:
-        raise HTTPException(status_code=400, detail=f"Unknown provider: {profile.provider}")
-    
     try:
-        # Test connection with a simple message
-        test_messages = [
-            {"role": "user", "content": "Hello, this is a connection test. Please respond with 'Connection successful!'"}
-        ]
+        # Create a temporary profile for provider creation
+        temp_profile = LLMProfile(
+            name="temp_test",
+            provider=profile.provider,
+            endpoint=profile.endpoint,
+            model_name=profile.model_name,
+            context_tokens=profile.context_tokens,
+            api_key=api_key,
+            role=profile.role or "optimize",
+            is_active=True
+        )
         
-        response = await provider.generate_completion(test_messages)
+        # Get provider instance using factory
+        provider = LLMProviderFactory.create_provider(temp_profile)
+        if not provider:
+            logger.error(f"Failed to create provider instance for: {profile.provider}")
+            raise HTTPException(status_code=400, detail=f"Failed to create provider for {profile.provider}")
         
-        if response and "successful" in response.lower():
-            return {"status": "success", "message": "Connection test successful"}
+        logger.info(f"Created provider instance: {type(provider).__name__}")
+        
+        # Use the provider's built-in test_connection method
+        success, message = await provider.test_connection()
+        
+        if success:
+            logger.info(f"Connection test successful for {profile.provider}: {message}")
+            return {"status": "success", "message": message or "Connection test successful"}
         else:
-            return {"status": "success", "message": "Connection works but unexpected response"}
+            logger.warning(f"Connection test failed for {profile.provider}: {message}")
+            # Categorize the error based on the message
+            error_msg = message.lower() if message else ""
+            if 'api key' in error_msg or 'unauthorized' in error_msg or 'invalid' in error_msg:
+                raise HTTPException(status_code=401, detail=message or "Invalid API key or unauthorized access")
+            elif 'quota' in error_msg or 'rate limit' in error_msg:
+                raise HTTPException(status_code=429, detail=message or "API quota exceeded or rate limited")
+            elif 'timeout' in error_msg or 'connection' in error_msg:
+                raise HTTPException(status_code=503, detail=message or "Network connection failed")
+            else:
+                raise HTTPException(status_code=500, detail=message or "Connection test failed")
             
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        error_msg = str(e).lower()
-        if 'api key' in error_msg or 'unauthorized' in error_msg or 'invalid_api_key' in error_msg:
-            raise HTTPException(status_code=401, detail="Invalid API key or unauthorized access")
-        elif 'quota' in error_msg or 'rate limit' in error_msg:
-            raise HTTPException(status_code=429, detail="API quota exceeded or rate limited")
-        elif 'network' in error_msg or 'connection' in error_msg:
-            raise HTTPException(status_code=503, detail="Network connection failed")
-        else:
-            raise HTTPException(status_code=500, detail=f"Connection test failed: {str(e)}")
+        logger.error(f"Unexpected error during connection test: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Connection test failed: {str(e)}")
 
 
 @router.get("/system-status")
