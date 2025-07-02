@@ -20,14 +20,46 @@ class LLMProviderFactory:
     def create_provider(profile: LLMProfile) -> Optional[BaseLLMProvider]:
         """Create an LLM provider from a profile configuration."""
         
-        # Use environment config as fallback for missing profile values
-        env_config = settings.get_llm_config(profile.provider)
+        # Validate profile has required fields
+        if not profile.provider:
+            logger.error(f"Profile {profile.id} missing provider")
+            return None
+            
+        if not profile.endpoint:
+            logger.error(f"Profile {profile.id} missing endpoint")
+            return None
+        
+        # Check if API key is required for this provider
+        supported_providers = LLMProviderFactory.get_supported_providers()
+        provider_info = supported_providers.get(profile.provider.lower())
+        
+        if provider_info and provider_info.get('requires_api_key', True):
+            # Use environment config as fallback for missing profile values
+            env_config = settings.get_llm_config(profile.provider)
+            api_key = profile.api_key or env_config.get("api_key")
+            
+            if not api_key:
+                logger.error(f"Profile {profile.id} ({profile.provider}) missing required API key")
+                return None
+                
+            # Decrypt API key if it's encrypted
+            try:
+                from app.utils.crypto import decrypt_api_key, is_api_key_encrypted
+                if is_api_key_encrypted(api_key):
+                    api_key = decrypt_api_key(api_key)
+            except Exception as e:
+                logger.error(f"Failed to decrypt API key for profile {profile.id}: {e}")
+                return None
+        else:
+            # For providers that don't require API key (like Ollama)
+            env_config = settings.get_llm_config(profile.provider)
+            api_key = profile.api_key or env_config.get("api_key", "")
         
         config = {
             "provider": profile.provider,
             "model_name": profile.model_name or env_config.get("model_name"),
             "endpoint": profile.endpoint or env_config.get("endpoint"),
-            "api_key": profile.api_key or env_config.get("api_key"),
+            "api_key": api_key,
             "context_tokens": profile.context_tokens or env_config.get("context_tokens"),
             "role": profile.role
         }

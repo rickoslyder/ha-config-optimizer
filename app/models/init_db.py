@@ -18,7 +18,7 @@ def create_tables():
 
 
 def init_default_data():
-    """Initialize default settings and LLM profiles."""
+    """Initialize default settings. LLM profiles must be configured by users."""
     from .database import SessionLocal
     
     db = SessionLocal()
@@ -34,20 +34,12 @@ def init_default_data():
             db.add(default_settings)
             print("Default settings created.")
         
-        # Create default LLM profile if not exists
-        profile = db.query(LLMProfile).first()
-        if not profile:
-            default_profile = LLMProfile(
-                name="Default OpenAI",
-                provider="openai",
-                endpoint="https://api.openai.com/v1",
-                context_tokens=128000,
-                role="optimize",
-                model_name="o4-mini",
-                is_active=1
-            )
-            db.add(default_profile)
-            print("Default LLM profile created.")
+        # Don't create a default LLM profile without API key
+        # This prevents broken profiles that cause scan failures
+        # Users must set up their first profile through the UI
+        profile_count = db.query(LLMProfile).count()
+        if profile_count == 0:
+            print("No LLM profiles found - users will be guided to set up their first profile.")
         
         db.commit()
         

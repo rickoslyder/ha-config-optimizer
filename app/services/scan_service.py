@@ -86,8 +86,9 @@ class ScanService:
                     logger.error(f"[SCAN {scan_id}] No active LLM profiles found in database")
             
             if not llm_profile:
-                logger.error(f"[SCAN {scan_id}] FAILURE: No LLM profile available for scan")
-                print(f"[SCAN {scan_id}] FAILURE: No LLM profile available for scan")
+                logger.error(f"[SCAN {scan_id}] FAILURE: No valid LLM profiles configured")
+                print(f"[SCAN {scan_id}] FAILURE: No valid LLM profiles configured")
+                print(f"[SCAN {scan_id}] Please configure an LLM profile with a valid API key in Settings")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
@@ -110,6 +111,8 @@ class ScanService:
             if not llm_provider:
                 logger.error(f"[SCAN {scan_id}] FAILURE: Failed to create LLM provider for profile {llm_profile.id}")
                 print(f"[SCAN {scan_id}] FAILURE: Failed to create LLM provider for profile {llm_profile.id}")
+                print(f"[SCAN {scan_id}] Profile '{llm_profile.name}' may be missing API key or have invalid configuration")
+                print(f"[SCAN {scan_id}] Please check your LLM profile settings and test the connection")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
@@ -127,6 +130,12 @@ class ScanService:
             if not connection_ok:
                 logger.error(f"[SCAN {scan_id}] FAILURE: LLM provider connection failed: {error_msg}")
                 print(f"[SCAN {scan_id}] FAILURE: LLM provider connection failed: {error_msg}")
+                if 'api key' in error_msg.lower() or 'unauthorized' in error_msg.lower():
+                    print(f"[SCAN {scan_id}] This appears to be an API key issue - please check your API key in Settings")
+                elif 'quota' in error_msg.lower() or 'rate limit' in error_msg.lower():
+                    print(f"[SCAN {scan_id}] API quota exceeded - please check your usage limits or try again later")
+                else:
+                    print(f"[SCAN {scan_id}] Please verify your LLM provider settings and network connection")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
