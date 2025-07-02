@@ -1,7 +1,7 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: "LLM Config Optimizer"
 description: "AI-powered Home Assistant configuration analysis and optimization using multiple LLM providers"
-version: "0.1.1"
+version: "0.1.2"
 slug: "llm-config-optimizer"
 url: "https://github.com/rickoslyder/ha-config-optimizer"
 

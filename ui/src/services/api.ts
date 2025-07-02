@@ -57,11 +57,9 @@ class ApiService {
     
     // If the path contains 'api/hassio_ingress', we're in an Ingress environment
     if (pathSegments.includes('api') && pathSegments.includes('hassio_ingress')) {
-      // Extract the Ingress base path (e.g., /api/hassio_ingress/...)
-      const ingressIndex = pathSegments.indexOf('hassio_ingress');
-      const basePath = '/' + pathSegments.slice(0, ingressIndex + 2).join('/');
-      this.baseUrl = basePath + '/api';
-      console.log('Detected Home Assistant Ingress environment, using base URL:', this.baseUrl);
+      // In Ingress, we're already at the right base path, so use relative URLs
+      this.baseUrl = 'api';
+      console.log('Detected Home Assistant Ingress environment, using relative base URL:', this.baseUrl);
     } else {
       // Development or direct access
       this.baseUrl = '/api';

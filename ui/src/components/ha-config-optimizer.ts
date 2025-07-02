@@ -160,18 +160,13 @@ export class HaConfigOptimizer extends LitElement {
     try {
       console.log('Checking API connection...');
       
-      // Use the apiService to get the correct base URL
-      const pathSegments = window.location.pathname.split('/').filter(Boolean);
-      let healthUrl = '/health';
-      
-      // If we're in an Ingress environment, adjust the health URL
-      if (pathSegments.includes('api') && pathSegments.includes('hassio_ingress')) {
-        const ingressIndex = pathSegments.indexOf('hassio_ingress');
-        const basePath = '/' + pathSegments.slice(0, ingressIndex + 2).join('/');
-        healthUrl = basePath + '/health';
-      }
+      // In Home Assistant Ingress, we're already at the right base path
+      // The health endpoint is at the same level as the index.html
+      let healthUrl = 'health';  // Use relative URL
       
       console.log('Health check URL:', healthUrl);
+      console.log('Current location:', window.location.href);
+      
       const response = await fetch(healthUrl);
       this.isConnected = response.ok;
       
@@ -181,6 +176,19 @@ export class HaConfigOptimizer extends LitElement {
       } else {
         console.error('API health check failed:', response.status);
         this.error = `API health check failed with status: ${response.status}`;
+        
+        // Try the addon info endpoint as a fallback
+        console.log('Trying addon/info endpoint...');
+        try {
+          const addonResponse = await fetch('addon/info');
+          if (addonResponse.ok) {
+            console.log('Addon info endpoint succeeded, API is accessible');
+            this.isConnected = true;
+            this.error = null;
+          }
+        } catch (e) {
+          console.error('Addon info endpoint also failed:', e);
+        }
       }
     } catch (error) {
       console.error('Failed to connect to API:', error);
