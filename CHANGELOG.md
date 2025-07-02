@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-01-02
+
+### Fixed - Addon Discovery Issue 🔍
+- **Added Required Icon Files**: Generated `icon.png` (128x128) and `logo.png` (250x100) from SVG sources for proper addon store display
+- **Fixed Mapping Format**: Corrected `config.yaml` to use proper `homeassistant_config:rw` syntax instead of complex type/read_only format
+- **Updated .gitignore**: Removed PNG icon exclusions to allow required addon files to be committed
+
+### Technical Details
+- The missing `icon.png` file was preventing the addon from appearing in Home Assistant addon store search results
+- Fixed file system mapping configuration to match official Home Assistant addon standards
+- All configuration validation checks now pass successfully
+
+This patch release specifically addresses addon discoverability issues in the Home Assistant store.
+
 ## [0.2.1] - 2025-01-02
 
 ### Fixed - File Access and Security 🔒
@@ -220,7 +234,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.3...v0.1.4
