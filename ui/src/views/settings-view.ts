@@ -256,6 +256,9 @@ export class SettingsView extends LitElement {
       await apiService.deleteLLMProfile(profileId);
       showToast('LLM profile deleted successfully', 'success');
       await this.loadData();
+      
+      // Notify parent that profiles were updated
+      this.dispatchEvent(new CustomEvent('profiles-updated', { bubbles: true }));
     } catch (error) {
       console.error('Failed to delete profile:', error);
       showToast('Failed to delete profile', 'error');
@@ -279,6 +282,9 @@ export class SettingsView extends LitElement {
       this.showProfileModal = false;
       this.editingProfile = null;
       await this.loadData();
+      
+      // Notify parent that profiles were updated
+      this.dispatchEvent(new CustomEvent('profiles-updated', { bubbles: true }));
     } catch (error) {
       console.error('Failed to save profile:', error);
       showToast('Failed to save profile. Please check your settings and try again.', 'error');

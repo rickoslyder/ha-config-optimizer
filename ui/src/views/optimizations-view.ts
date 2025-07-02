@@ -808,13 +808,7 @@ export class OptimizationsView extends LitElement {
 
       ${this.renderBulkActions()}
 
-      ${this.suggestions.length === 0 ? html`
-        <div class="empty-state">
-          <div class="empty-icon">🔍</div>
-          <h2>No optimizations found</h2>
-          <p>Run a scan to analyze your Home Assistant configuration and get AI-powered optimization suggestions.</p>
-        </div>
-      ` : html`
+      ${this.suggestions.length === 0 ? this.renderEmptyState() : html`
         <div class="suggestions-list">
           ${this.suggestions.map(suggestion => this.renderSuggestionCard(suggestion))}
         </div>
@@ -1045,6 +1039,59 @@ export class OptimizationsView extends LitElement {
             `}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  private renderEmptyState() {
+    const hasCompletedScans = this.scans.some(s => s.status === 'completed');
+    const hasRunningScans = this.scans.some(s => s.status === 'running');
+    
+    if (hasRunningScans) {
+      return html`
+        <div class="empty-state">
+          <div class="empty-icon">⏳</div>
+          <h2>Scan in Progress</h2>
+          <p>Your Home Assistant configuration is being analyzed. This usually takes 1-2 minutes.</p>
+          <p><strong>What's happening:</strong></p>
+          <ul style="text-align: left; max-width: 400px; margin: 16px auto;">
+            <li>Parsing YAML configuration files</li>
+            <li>Analyzing automation patterns</li>
+            <li>Generating optimization suggestions</li>
+          </ul>
+        </div>
+      `;
+    }
+    
+    if (hasCompletedScans) {
+      return html`
+        <div class="empty-state">
+          <div class="empty-icon">✅</div>
+          <h2>Configuration Looks Good!</h2>
+          <p>No optimization suggestions were found in your latest scan.</p>
+          <p>Your Home Assistant configuration appears to be well-optimized.</p>
+          <button class="scan-button" @click=${this.handleScanClick} style="margin-top: 16px;">
+            🔍 Run Another Scan
+          </button>
+        </div>
+      `;
+    }
+    
+    return html`
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h2>Ready to Optimize Your Configuration</h2>
+        <p>Run a scan to analyze your Home Assistant configuration and get AI-powered optimization suggestions.</p>
+        <p><strong>What you'll get:</strong></p>
+        <ul style="text-align: left; max-width: 400px; margin: 16px auto;">
+          <li>Performance improvement recommendations</li>
+          <li>Code cleanup suggestions</li>
+          <li>Best practice implementations</li>
+          <li>Security enhancement tips</li>
+        </ul>
+        <button class="scan-button" @click=${this.handleScanClick} style="margin-top: 16px;">
+          🚀 Start Your First Scan
+        </button>
       </div>
     `;
   }

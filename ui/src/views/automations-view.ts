@@ -436,6 +436,64 @@ export class AutomationsView extends LitElement {
     }
   }
 
+  private renderEmptyState() {
+    const hasAutomationScans = this.scans.some(s => s.status === 'completed');
+    const hasRunningScans = this.scans.some(s => s.status === 'running');
+    
+    if (hasRunningScans) {
+      return html`
+        <div class="empty-state">
+          <div class="empty-icon">⏳</div>
+          <h2>Generating Automation Ideas</h2>
+          <p>AI is analyzing your Home Assistant setup to suggest smart automations.</p>
+          <p><strong>This process includes:</strong></p>
+          <ul style="text-align: left; max-width: 400px; margin: 16px auto;">
+            <li>Discovering available entities and devices</li>
+            <li>Analyzing usage patterns</li>
+            <li>Creating smart automation suggestions</li>
+          </ul>
+        </div>
+      `;
+    }
+    
+    if (hasAutomationScans) {
+      return html`
+        <div class="empty-state">
+          <div class="empty-icon">✨</div>
+          <h2>Your Setup is Well Automated</h2>
+          <p>No new automation suggestions were found based on your current configuration.</p>
+          <p>You might want to try:</p>
+          <ul style="text-align: left; max-width: 400px; margin: 16px auto;">
+            <li>Adding new devices or entities</li>
+            <li>Running another scan after configuration changes</li>
+            <li>Checking optimization suggestions instead</li>
+          </ul>
+          <button class="scan-button" @click=${this.handleScanClick} style="margin-top: 16px;">
+            🔄 Generate New Suggestions
+          </button>
+        </div>
+      `;
+    }
+    
+    return html`
+      <div class="empty-state">
+        <div class="empty-icon">🤖</div>
+        <h2>Ready to Create Smart Automations</h2>
+        <p>Let AI analyze your Home Assistant setup and suggest useful automations based on your devices and entities.</p>
+        <p><strong>You'll get suggestions for:</strong></p>
+        <ul style="text-align: left; max-width: 400px; margin: 16px auto;">
+          <li>Motion-activated lighting</li>
+          <li>Energy-saving automations</li>
+          <li>Security and monitoring alerts</li>
+          <li>Convenience and comfort improvements</li>
+        </ul>
+        <button class="scan-button" @click=${this.handleScanClick} style="margin-top: 16px;">
+          🚀 Generate Your First Automations
+        </button>
+      </div>
+    `;
+  }
+
   private async copyYamlToClipboard() {
     if (!this.selectedSuggestion?.metadata?.yaml) return;
     
@@ -471,13 +529,7 @@ export class AutomationsView extends LitElement {
 
       <scan-progress @scans-updated=${this.handleScansUpdated}></scan-progress>
 
-      ${this.suggestions.length === 0 ? html`
-        <div class="empty-state">
-          <div class="empty-icon">🤖</div>
-          <h2>No automation suggestions found</h2>
-          <p>Generate AI-powered automation suggestions based on your Home Assistant configuration and available entities.</p>
-        </div>
-      ` : html`
+      ${this.suggestions.length === 0 ? this.renderEmptyState() : html`
         <div class="suggestions-list">
           ${this.suggestions.map(suggestion => this.renderSuggestionCard(suggestion))}
         </div>

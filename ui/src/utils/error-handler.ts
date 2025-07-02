@@ -124,14 +124,55 @@ export function parseApiError(error: any): UserFriendlyError {
         };
     }
   } else if (error?.code) {
-    // Handle specific error codes
+    // Handle specific error codes and messages
+    const errorMessage = error.message?.toLowerCase() || '';
+    
+    // Check for API key related errors
+    if (errorMessage.includes('api key') || errorMessage.includes('unauthorized') || errorMessage.includes('invalid_api_key')) {
+      result = {
+        title: 'API Key Error',
+        message: 'Your API key appears to be invalid or missing.',
+        suggestions: [
+          'Check that your API key is entered correctly',
+          'Verify the API key is active and has sufficient credits',
+          'Generate a new API key if needed',
+          'Ensure you\'re using the correct provider endpoint'
+        ],
+        isUserError: true
+      };
+    } else if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+      result = {
+        title: 'Rate Limit Exceeded',
+        message: 'You\'ve exceeded your API usage limits.',
+        suggestions: [
+          'Wait a few minutes before trying again',
+          'Check your API plan and usage limits',
+          'Consider upgrading your API plan',
+          'Try using fewer files in your scan'
+        ],
+        isUserError: true
+      };
+    } else if (errorMessage.includes('no valid profiles') || errorMessage.includes('llm profile')) {
+      result = {
+        title: 'LLM Profile Required',
+        message: 'No valid LLM profiles are configured.',
+        suggestions: [
+          'Go to Settings and add an LLM profile',
+          'Ensure your API key is entered correctly',
+          'Test your connection before running scans',
+          'Use the Quick Setup wizard for guided configuration'
+        ],
+        isUserError: true
+      };
+    }
+    
     switch (error.code) {
       case 'NETWORK_ERROR':
       case 'ECONNREFUSED':
         result = {
           title: 'Connection Failed',
           message: 'Could not connect to the server. Please check your connection.',
-          suggestions: ['Check your network connection', 'Verify the server is running'],
+          suggestions: ['Check your network connection', 'Verify the server is running', 'Try refreshing the page'],
           isUserError: false
         };
         break;
@@ -140,7 +181,11 @@ export function parseApiError(error: any): UserFriendlyError {
         result = {
           title: 'Request Timeout',
           message: 'The request took too long to complete.',
-          suggestions: ['Try again with fewer files', 'Check your network connection'],
+          suggestions: [
+            'Try again with fewer files',
+            'Check your network connection', 
+            'The LLM provider might be experiencing delays'
+          ],
           isUserError: false
         };
         break;
@@ -173,9 +218,15 @@ export function getOperationError(operation: string, error: any): UserFriendlyEr
   
   const operationMessages: Record<string, Partial<UserFriendlyError>> = {
     scan: {
-      title: 'Scan Failed',
+      title: 'Scan Failed', 
       message: 'Failed to start the configuration scan.',
-      suggestions: ['Check that files are accessible', 'Try selecting fewer files', 'Verify your LLM configuration']
+      suggestions: [
+        'Ensure you have a valid LLM profile configured',
+        'Check that your API key is working (test connection in Settings)',
+        'Verify the selected files are accessible',
+        'Try scanning fewer files at once',
+        'Check that Home Assistant files are readable'
+      ]
     },
     suggestion: {
       title: 'Suggestion Update Failed',
@@ -190,7 +241,13 @@ export function getOperationError(operation: string, error: any): UserFriendlyEr
     llm_test: {
       title: 'LLM Connection Test Failed',
       message: 'Could not connect to the LLM provider.',
-      suggestions: ['Check your API key', 'Verify the endpoint URL', 'Check your internet connection']
+      suggestions: [
+        'Verify your API key is correct and active',
+        'Check that the endpoint URL is valid',
+        'Ensure you have sufficient credits/quota',
+        'Test your internet connection',
+        'Try a different LLM provider if issues persist'
+      ]
     },
     export: {
       title: 'Export Failed',
@@ -214,7 +271,7 @@ export function getOperationError(operation: string, error: any): UserFriendlyEr
 /**
  * Show an error message using the toast notification system
  */
-export function showErrorToast(error: any, operation?: string) {
+export function showErrorToast(error: any, operation?: string, showRecovery = false) {
   const userError = operation ? getOperationError(operation, error) : parseApiError(error);
   
   // Import showToast dynamically to avoid circular dependencies
@@ -226,6 +283,40 @@ export function showErrorToast(error: any, operation?: string) {
       console.error(`${userError.title}:`, error);
     }
   });
+  
+  // Show error recovery panel for critical errors
+  if (showRecovery || shouldShowRecoveryPanel(userError, operation)) {
+    showErrorRecoveryPanel(userError);
+  }
+}
+
+/**
+ * Determine if the error recovery panel should be shown
+ */
+function shouldShowRecoveryPanel(userError: UserFriendlyError, operation?: string): boolean {
+  // Show recovery panel for:
+  // - API key related errors
+  // - LLM configuration errors  
+  // - Scan failures
+  // - Connection issues
+  return (
+    userError.title.includes('API Key') ||
+    userError.title.includes('LLM') ||
+    userError.title.includes('Connection') ||
+    operation === 'scan' ||
+    operation === 'llm_test'
+  );
+}
+
+/**
+ * Show the error recovery panel
+ */
+function showErrorRecoveryPanel(userError: UserFriendlyError) {
+  // Find the main app component and call its method
+  const appElement = document.querySelector('ha-config-optimizer') as any;
+  if (appElement && typeof appElement.showErrorRecoveryPanel === 'function') {
+    appElement.showErrorRecoveryPanel(userError);
+  }
 }
 
 /**
