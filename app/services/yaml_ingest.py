@@ -162,18 +162,21 @@ class YAMLIngestService:
                         # Skip hidden files and common excludes
                         if item.name.startswith('.') or item.name in ['__pycache__', '.git']:
                             continue
-                        # For files, only include YAML and common config files
+                        
+                        # Handle files and directories separately
                         if item.is_file():
+                            # For files, only include YAML and common config files
                             if item.suffix.lower() in ['.yaml', '.yml', '.json', '.txt', '.md']:
                                 logger.info(f"Including file: {item.name} (size: {item.stat().st_size})")
                                 children.append(build_tree_node(item))
                             else:
                                 logger.info(f"Skipping file (wrong extension): {item.name}")
                         else:
-                            # Include all directories but recursively
+                            # For directories, process recursively and include if they have any content
                             logger.info(f"Processing directory: {item.name}")
                             child_node = build_tree_node(item)
-                            if child_node.get("children"):  # Only include dirs with content
+                            # Include directories that have any children (files or subdirectories)
+                            if child_node.get("children"):
                                 logger.info(f"Including directory: {item.name} (has {len(child_node.get('children', []))} children)")
                                 children.append(child_node)
                             else:

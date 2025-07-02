@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2025-01-02
+
+### Fixed - File Tree Logic Bug 🐛
+- **Fixed Critical File Processing Bug**: Corrected file vs directory logic in `build_tree_node()` function
+- **File Picker Now Actually Works**: Files are now properly included in the file tree instead of being filtered out
+- **Separated File and Directory Handling**: Files and directories are now processed with distinct logic paths
+- **Root Cause Resolved**: Fixed the condition that was incorrectly applying directory-only filtering to files
+
+### Root Cause Analysis
+The file picker was showing "No files available" because:
+- Files were being processed correctly during tree traversal
+- But the final inclusion logic was checking for a `children` property that only directories have
+- Files don't have a `children` property, so they were being excluded from the final tree
+- This happened even though the files existed and passed all extension and security validations
+
+### Technical Details
+- **Before**: Files were excluded because `if child_node.get("children"):` failed for file nodes
+- **After**: Files and directories are handled separately - files are included directly if they pass validation
+- **Impact**: File picker will now display configuration.yaml, scenes.yaml, scripts.yaml, and other HA config files
+- **Validation**: All existing security and extension filtering logic remains intact
+
+This was a logic error, not a path detection issue. The debug output showed files were being found but the tree building was broken.
+
 ## [0.2.8] - 2025-01-02
 
 ### Fixed - File Picker Now Shows HA Configuration Files! 🎉
