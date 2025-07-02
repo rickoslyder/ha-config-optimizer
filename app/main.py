@@ -59,16 +59,6 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
     app.include_router(ha_integration.router, prefix="/api/ha", tags=["homeassistant"])
 
-    # Determine static files directory
-    if is_addon:
-        static_dir = "/app/static"
-    else:
-        static_dir = "ui/build"
-    
-    # Only mount static files if directory exists
-    if Path(static_dir).exists():
-        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-
     return app
 
 
@@ -106,3 +96,15 @@ async def addon_info():
         "options": options,
         "supervisor_token": bool(os.getenv("SUPERVISOR_TOKEN")),
     }
+
+
+# Mount static files LAST to avoid catching API routes
+# This must be done after all route definitions
+if is_addon_environment():
+    static_dir = "/app/static"
+else:
+    static_dir = "ui/build"
+
+# Only mount static files if directory exists
+if Path(static_dir).exists():
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
