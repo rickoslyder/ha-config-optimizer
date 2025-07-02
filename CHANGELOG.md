@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-01-03
+
+### Added - LiteLLM Integration for 100+ AI Models 🚀
+
+**BREAKING THROUGH: Unified LLM Provider with Massive Model Expansion**
+
+This release integrates LiteLLM to provide access to 100+ AI models through a unified interface, dramatically expanding capabilities while simplifying maintenance.
+
+### 🎯 **Core Integration**
+- **LiteLLM Provider**: New unified provider replacing custom implementations
+- **100+ Model Support**: Access to models across OpenAI, Anthropic, Google, Groq, Ollama, and more
+- **Proxy Integration**: Optional LiteLLM proxy server support for centralized management
+- **Enhanced Error Handling**: Leverages LiteLLM's standardized OpenAI-compatible exceptions
+
+### 🔧 **Technical Improvements**
+- **Reduced Codebase**: Eliminated ~80% of custom provider code
+- **Better Reliability**: Built-in retries, fallbacks, and error categorization
+- **Automatic Updates**: LiteLLM handles provider API changes
+- **Unified Interface**: Consistent OpenAI format across all providers
+
+### 🆕 **New Provider Support**
+- **Google Gemini**: Added full support for Gemini models (1.5 Pro, 1.5 Flash)
+- **Latest Models**: Updated all provider presets with current model names
+- **Context Windows**: Accurate context limits for all models (up to 1M+ for Gemini)
+
+### 🐛 **Bug Fixes**
+- **Connection Test Fix**: Fixed 500 error when testing OpenAI connections
+- **Method Call Mismatch**: Corrected `generate_completion()` to `generate()`
+- **Error Handling**: Improved error messages and categorization
+
+### 📊 **Model Updates**
+- **OpenAI**: gpt-4o, gpt-4o-mini, o1-preview, o1-mini
+- **Anthropic**: claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022
+- **Google**: gemini-1.5-pro, gemini-1.5-flash, gemini-pro
+- **Groq**: llama3-70b-8192, mixtral-8x7b-32768
+- **Ollama**: llama3.1, phi3, codellama
+
+### 🔄 **Backwards Compatibility**
+- All existing LLM profiles continue to work unchanged
+- No database migrations required
+- Same user interface and workflows
+- Optional proxy mode via environment variables
+
 ## [0.3.0] - 2025-01-02
 
 ### Major Release - Complete User Experience Overhaul 🚀
@@ -549,7 +592,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.12...v0.3.0
 [0.2.8]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...v0.2.7
