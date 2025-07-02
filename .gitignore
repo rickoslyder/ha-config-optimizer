@@ -43,7 +43,6 @@ ui/build/
 ui/dist/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -63,13 +62,75 @@ logs/
 secrets.yaml
 .env
 .env.local
+*.key
+*.pem
+*.cert
+*.crt
+config_local.yaml
+
+# Deployment configs with potential credentials
+deploy_config.json
+*.config.json
+
+# API keys and tokens
+openai_api_key.txt
+anthropic_api_key.txt
+*_token.txt
+*_key.txt
 
 # Temporary files
 *.tmp
 *.temp
 .cache/
+.pytest_cache/
 
 # Home Assistant specific
 known_devices.yaml
 home-assistant.log
 home-assistant_v2.db
+.storage/
+automations.yaml.backup*
+configuration.yaml.backup*
+
+# Local development
+test_config/
+local_config/
+backup/
+backups/
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+*.sublime-*
+.vimrc
+.vim/
+
+# macOS specific
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Generated icons (keep source SVGs, ignore generated PNGs)
+icon.png
+logo.png
+
+# Runtime and process files
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Local Claude settings that might contain sensitive info
+.claude/settings.local.json

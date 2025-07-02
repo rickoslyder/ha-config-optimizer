@@ -33,10 +33,33 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Check for virtual environment and use it
+PYTHON_CMD="python3"
+PIP_CMD="pip3"
+
+if [ -d "venv" ]; then
+    print_info "Using virtual environment..."
+    source venv/bin/activate
+    PYTHON_CMD="python"
+    PIP_CMD="pip"
+elif [ -d "env" ]; then
+    print_info "Using virtual environment..."
+    source env/bin/activate
+    PYTHON_CMD="python"
+    PIP_CMD="pip"
+fi
+
 # Check if deployment requirements are installed
-if ! python3 -c "import watchdog" &> /dev/null; then
+if ! $PYTHON_CMD -c "import watchdog" &> /dev/null; then
     print_warning "Installing deployment requirements..."
-    pip3 install -r deploy_requirements.txt
+    if ! $PIP_CMD install -r deploy_requirements.txt; then
+        print_error "Failed to install deployment requirements"
+        print_info "Try creating a virtual environment first:"
+        print_info "  python3 -m venv venv"
+        print_info "  source venv/bin/activate"
+        print_info "  pip install -r deploy_requirements.txt"
+        exit 1
+    fi
 fi
 
 # Parse command line arguments
@@ -85,7 +108,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build command
-CMD="python3 deploy.py"
+CMD="$PYTHON_CMD deploy.py"
 
 if [ "$WATCH_MODE" = true ]; then
     CMD="$CMD --watch"
