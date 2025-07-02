@@ -47,7 +47,31 @@
 
 ### Installation Options
 
-#### Option 1: Development Setup
+#### Option 1: Home Assistant Add-on (Recommended)
+
+**For End Users:**
+1. Add this repository URL to Home Assistant:
+   - Settings → Add-ons → Add-on Store → ⋮ → Repositories
+   - Add: `https://github.com/rickoslyder/ha-config-optimizer`
+2. Install "LLM Config Optimizer" from Local add-ons
+3. Configure your LLM provider and start analyzing!
+
+**For Developers (Samba Deployment):**
+```bash
+# 1. Clone and setup
+git clone https://github.com/rickoslyder/ha-config-optimizer.git
+cd ha-config-optimizer
+
+# 2. Install deployment tools
+pip3 install -r deploy_requirements.txt
+
+# 3. Deploy to Home Assistant via Samba
+./deploy.sh --watch  # Deploy and watch for changes
+
+# 4. Install addon in HA and configure your LLM provider
+```
+
+#### Option 2: Development Setup
 ```bash
 # 1. Clone and setup
 git clone https://github.com/rickoslyder/ha-config-optimizer.git
@@ -68,7 +92,7 @@ python3 test_scan.py
 open http://localhost:8000
 ```
 
-#### Option 2: Docker
+#### Option 3: Docker
 ```bash
 docker build -t ha-config-optimizer .
 docker run -p 8000:8000 -v /path/to/ha-config:/config ha-config-optimizer

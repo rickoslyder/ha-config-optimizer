@@ -1,0 +1,2 @@
+# Requirements for the deployment automation script
+watchdog>=3.0.0

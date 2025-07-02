@@ -1,0 +1,39 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start the LLM Config Optimizer service
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+
+declare log_level
+declare auto_backup
+declare max_file_size_mb
+
+# Get configuration options
+log_level=$(bashio::config 'log_level')
+auto_backup=$(bashio::config 'auto_backup')
+max_file_size_mb=$(bashio::config 'max_file_size_mb')
+
+# Set log level
+bashio::log.info "Starting LLM Config Optimizer..."
+bashio::log.info "Log level: ${log_level}"
+bashio::log.info "Auto backup: ${auto_backup}"
+bashio::log.info "Max file size: ${max_file_size_mb}MB"
+
+# Set environment variables
+export LOG_LEVEL="${log_level}"
+export AUTO_BACKUP="${auto_backup}"
+export MAX_FILE_SIZE_MB="${max_file_size_mb}"
+export PYTHONPATH="/app"
+
+# Set up database directory
+if [ ! -d "/data" ]; then
+    mkdir -p /data
+fi
+
+# For Home Assistant addon integration
+export CONFIG_PATH="/config"
+export DATA_PATH="/data"
+
+# Run the application on port 8099 for Ingress
+cd /app
+exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8099 --log-level "${log_level}"
