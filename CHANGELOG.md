@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2025-01-02
+
+### Fixed - File Picker Shows Files in Addon Environment 📁
+- **Fixed Path Detection**: Corrected config path from `/homeassistant` to `/homeassistant_config` to match actual Home Assistant mount point
+- **Updated AppArmor**: Changed AppArmor profile to include correct `/homeassistant_config` path permissions
+- **File Picker Working**: File selector now properly displays Home Assistant configuration files when running as addon
+
+### Root Cause
+The file picker was showing "No files available" because the path detection was looking for `/homeassistant` instead of `/homeassistant_config`. According to Home Assistant documentation, the `homeassistant_config` mapping mounts at `/homeassistant_config` by default.
+
+### Technical Details
+- Fixed `get_config_path()` function to check for correct directory path
+- Updated AppArmor profile to grant permissions to the correct path
+- File tree API now correctly scans and returns Home Assistant configuration files
+
+Users can now properly select configuration files for scanning in the addon UI.
+
 ## [0.2.5] - 2025-01-02
 
 ### Fixed - AppArmor Profile Restoration 🔐
@@ -285,7 +302,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...v0.2.3

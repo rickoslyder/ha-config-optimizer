@@ -15,9 +15,9 @@ def get_config_path() -> str:
     """Get the appropriate config path based on environment."""
     # Check if running in Home Assistant addon environment
     if os.path.exists("/data/options.json"):
-        # With homeassistant_config mapping, HA config is at /homeassistant
-        if os.path.exists("/homeassistant"):
-            return "/homeassistant"
+        # With homeassistant_config mapping, HA config is at /homeassistant_config
+        if os.path.exists("/homeassistant_config"):
+            return "/homeassistant_config"
         # Fallback to old mapping if it exists
         elif os.path.exists("/config"):
             return "/config"
