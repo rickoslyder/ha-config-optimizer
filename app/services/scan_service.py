@@ -52,52 +52,94 @@ class ScanService:
             scan.status = ScanStatus.RUNNING
             db.commit()
             
-            logger.info(f"Starting scan execution for scan {scan_id}")
+            logger.info(f"=== SCAN {scan_id} EXECUTION START ===")
+            logger.info(f"Scan details: status={scan.status}, llm_profile_id={scan.llm_profile_id}")
             
             # Get LLM profile
+            logger.info(f"[SCAN {scan_id}] Step 1: Looking up LLM profile")
             llm_profile = None
             if scan.llm_profile_id:
+                logger.info(f"[SCAN {scan_id}] Searching for specific LLM profile ID: {scan.llm_profile_id}")
                 llm_profile = db.query(LLMProfile).filter(
                     LLMProfile.id == scan.llm_profile_id
                 ).first()
+                if llm_profile:
+                    logger.info(f"[SCAN {scan_id}] Found specific LLM profile: {llm_profile.name} (provider: {llm_profile.provider})")
+                else:
+                    logger.warning(f"[SCAN {scan_id}] Specific LLM profile {scan.llm_profile_id} not found")
             
             if not llm_profile:
+                logger.info(f"[SCAN {scan_id}] Looking for default active LLM profile")
                 # Get default active profile
                 llm_profile = db.query(LLMProfile).filter(
                     LLMProfile.is_active == 1
                 ).first()
+                if llm_profile:
+                    logger.info(f"[SCAN {scan_id}] Found default active LLM profile: {llm_profile.name} (provider: {llm_profile.provider})")
+                else:
+                    logger.error(f"[SCAN {scan_id}] No active LLM profiles found in database")
             
             if not llm_profile:
-                logger.error("No LLM profile available for scan")
+                logger.error(f"[SCAN {scan_id}] FAILURE: No LLM profile available for scan")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
                 return False
             
             # Create LLM provider
-            llm_provider = LLMProviderFactory.create_provider(llm_profile)
+            logger.info(f"[SCAN {scan_id}] Step 2: Creating LLM provider")
+            logger.info(f"[SCAN {scan_id}] Profile details: name={llm_profile.name}, provider={llm_profile.provider}, model={getattr(llm_profile, 'model_name', 'unknown')}")
+            
+            try:
+                llm_provider = LLMProviderFactory.create_provider(llm_profile)
+                if llm_provider:
+                    logger.info(f"[SCAN {scan_id}] LLM provider created successfully: {type(llm_provider).__name__}")
+                else:
+                    logger.error(f"[SCAN {scan_id}] LLM provider creation returned None")
+            except Exception as e:
+                logger.error(f"[SCAN {scan_id}] Exception during LLM provider creation: {e}")
+                llm_provider = None
+                
             if not llm_provider:
-                logger.error(f"Failed to create LLM provider for profile {llm_profile.id}")
+                logger.error(f"[SCAN {scan_id}] FAILURE: Failed to create LLM provider for profile {llm_profile.id}")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
                 return False
             
             # Test LLM connection
-            connection_ok, error_msg = await llm_provider.test_connection()
+            logger.info(f"[SCAN {scan_id}] Step 3: Testing LLM connection")
+            try:
+                connection_ok, error_msg = await llm_provider.test_connection()
+                logger.info(f"[SCAN {scan_id}] LLM connection test result: success={connection_ok}, message='{error_msg}'")
+            except Exception as e:
+                logger.error(f"[SCAN {scan_id}] Exception during LLM connection test: {e}")
+                connection_ok, error_msg = False, f"Connection test exception: {e}"
+                
             if not connection_ok:
-                logger.error(f"LLM provider connection failed: {error_msg}")
+                logger.error(f"[SCAN {scan_id}] FAILURE: LLM provider connection failed: {error_msg}")
                 scan.status = ScanStatus.FAILED
                 scan.ended_at = datetime.utcnow()
                 db.commit()
                 return False
             
             # Determine files to scan
+            logger.info(f"[SCAN {scan_id}] Step 4: Determining files to scan")
+            logger.info(f"[SCAN {scan_id}] Input file_paths: {file_paths}")
+            
             if file_paths is None:
-                file_paths = await self._get_files_to_scan(db)
+                logger.info(f"[SCAN {scan_id}] No specific files provided, using auto-discovery")
+                try:
+                    file_paths = await self._get_files_to_scan(db)
+                    logger.info(f"[SCAN {scan_id}] Auto-discovery returned {len(file_paths) if file_paths else 0} files: {file_paths}")
+                except Exception as e:
+                    logger.error(f"[SCAN {scan_id}] Exception during file discovery: {e}")
+                    file_paths = []
+            else:
+                logger.info(f"[SCAN {scan_id}] Using provided file paths: {file_paths}")
             
             if not file_paths:
-                logger.warning("No files found to scan")
+                logger.warning(f"[SCAN {scan_id}] COMPLETED WITH NO FILES: No files found to scan")
                 scan.status = ScanStatus.COMPLETED
                 scan.ended_at = datetime.utcnow()
                 scan.file_count = 0
@@ -105,30 +147,44 @@ class ScanService:
                 return True
             
             # Update file count
+            logger.info(f"[SCAN {scan_id}] Step 5: Found {len(file_paths)} files to scan")
             scan.file_count = len(file_paths)
             db.commit()
+            logger.info(f"[SCAN {scan_id}] Updated scan record with file_count={scan.file_count}")
             
             # Create suggestion engine
-            suggestion_engine = SuggestionEngine(llm_provider, self.yaml_service)
+            logger.info(f"[SCAN {scan_id}] Step 6: Creating suggestion engine")
+            try:
+                suggestion_engine = SuggestionEngine(llm_provider, self.yaml_service)
+                logger.info(f"[SCAN {scan_id}] Suggestion engine created successfully")
+            except Exception as e:
+                logger.error(f"[SCAN {scan_id}] FAILURE: Exception creating suggestion engine: {e}")
+                scan.status = ScanStatus.FAILED
+                scan.ended_at = datetime.utcnow()
+                db.commit()
+                return False
             
             # Determine analysis types
             if analysis_types is None:
                 analysis_types = ["optimization"]  # Default to optimization only
             
+            logger.info(f"[SCAN {scan_id}] Step 7: Starting analysis with types: {analysis_types}")
             all_suggestions = []
             
             # Execute each analysis type
             for analysis_type in analysis_types:
-                logger.info(f"Running {analysis_type} analysis")
+                logger.info(f"[SCAN {scan_id}] Running {analysis_type} analysis on {len(file_paths)} files")
                 
                 try:
                     suggestions = await suggestion_engine.analyze_configuration(
                         file_paths, scan_id, analysis_type
                     )
+                    logger.info(f"[SCAN {scan_id}] {analysis_type} analysis completed: {len(suggestions)} suggestions generated")
                     all_suggestions.extend(suggestions)
                     
                 except Exception as e:
-                    logger.error(f"Error in {analysis_type} analysis: {e}")
+                    logger.error(f"[SCAN {scan_id}] Error in {analysis_type} analysis: {e}")
+                    # Don't fail the entire scan for one analysis type
                     continue
             
             # Store suggestions in database
@@ -175,23 +231,31 @@ class ScanService:
     
     async def _get_files_to_scan(self, db: Session) -> List[str]:
         """Get list of files to scan based on settings."""
+        logger.info("[FILE_DISCOVERY] Starting file discovery process")
+        
         settings = db.query(Settings).first()
+        logger.info(f"[FILE_DISCOVERY] Settings query result: {settings}")
         
         if not settings:
             # Default file patterns
             includes = ["*.yaml", "*.yml"]
             excludes = ["secrets.yaml", "known_devices.yaml"]
+            logger.info(f"[FILE_DISCOVERY] No settings found, using defaults: includes={includes}, excludes={excludes}")
         else:
             includes = settings.yaml_includes or ["*.yaml", "*.yml"]
             excludes = settings.yaml_excludes or ["secrets.yaml", "known_devices.yaml"]
+            logger.info(f"[FILE_DISCOVERY] Using settings: includes={includes}, excludes={excludes}")
         
         try:
+            logger.info(f"[FILE_DISCOVERY] Calling yaml_service.filter_files with includes={includes}, excludes={excludes}")
             file_paths = self.yaml_service.filter_files(includes, excludes)
-            logger.info(f"Found {len(file_paths)} files to scan")
+            logger.info(f"[FILE_DISCOVERY] filter_files returned {len(file_paths)} files: {file_paths}")
             return file_paths
             
         except Exception as e:
-            logger.error(f"Error getting files to scan: {e}")
+            logger.error(f"[FILE_DISCOVERY] Exception during file filtering: {e}")
+            import traceback
+            logger.error(f"[FILE_DISCOVERY] Traceback: {traceback.format_exc()}")
             return []
     
     def create_scan(
