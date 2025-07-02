@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiService, type Settings, type LLMProfile } from '../services/api.js';
+import { showToast } from '../components/toast-notification.js';
 import '../components/llm-profile-modal.js';
 
 @customElement('settings-view')
@@ -144,6 +145,31 @@ export class SettingsView extends LitElement {
       color: var(--secondary-text-color, #757575);
     }
 
+    .profile-warning {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--optimizer-error, #d32f2f);
+      margin-top: 4px;
+    }
+
+    .profile-status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .status-ready {
+      color: var(--optimizer-success, #00c875);
+    }
+
+    .status-incomplete {
+      color: var(--optimizer-error, #d32f2f);
+    }
+
     .profile-actions {
       display: flex;
       gap: 8px;
@@ -206,8 +232,10 @@ export class SettingsView extends LitElement {
 
     try {
       this.settings = await apiService.updateSettings(updatedSettings);
+      showToast('Settings saved successfully', 'success');
     } catch (error) {
       console.error('Failed to save settings:', error);
+      showToast('Failed to save settings', 'error');
     }
   }
 
@@ -226,9 +254,11 @@ export class SettingsView extends LitElement {
 
     try {
       await apiService.deleteLLMProfile(profileId);
+      showToast('LLM profile deleted successfully', 'success');
       await this.loadData();
     } catch (error) {
       console.error('Failed to delete profile:', error);
+      showToast('Failed to delete profile', 'error');
     }
   }
 
@@ -239,9 +269,11 @@ export class SettingsView extends LitElement {
       if (this.editingProfile?.id) {
         // Update existing profile
         await apiService.updateLLMProfile(this.editingProfile.id, profileData);
+        showToast('LLM profile updated successfully', 'success');
       } else {
         // Create new profile
         await apiService.createLLMProfile(profileData);
+        showToast('LLM profile created successfully', 'success');
       }
       
       this.showProfileModal = false;
@@ -249,13 +281,36 @@ export class SettingsView extends LitElement {
       await this.loadData();
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert('Failed to save profile. Please check your settings and try again.');
+      showToast('Failed to save profile. Please check your settings and try again.', 'error');
     }
   }
 
   private handleCloseModal() {
     this.showProfileModal = false;
     this.editingProfile = null;
+  }
+
+  private requiresApiKey(provider: string): boolean {
+    return provider !== 'ollama';
+  }
+
+  private renderProfileStatus(profile: LLMProfile) {
+    const needsApiKey = this.requiresApiKey(profile.provider);
+    const hasApiKey = profile.api_key && profile.api_key.trim().length > 0;
+    
+    if (needsApiKey && !hasApiKey) {
+      return html`
+        <div class="profile-status status-incomplete">
+          ⚠️ Missing API key
+        </div>
+      `;
+    }
+    
+    return html`
+      <div class="profile-status status-ready">
+        ✅ Ready
+      </div>
+    `;
   }
 
   render() {
@@ -336,6 +391,7 @@ export class SettingsView extends LitElement {
                   <div class="profile-details">
                     ${profile.provider} • ${profile.model_name || 'Default Model'} • ${profile.role}
                   </div>
+                  ${this.renderProfileStatus(profile)}
                 </div>
                 <div class="profile-actions">
                   <button 

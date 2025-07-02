@@ -59,6 +59,7 @@ export interface LLMProfile {
   role: string;
   model_name?: string;
   is_active: boolean;
+  api_key?: string;
 }
 
 class ApiService {

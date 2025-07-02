@@ -19,7 +19,8 @@ export class LLMProfileModal extends LitElement {
     model_name: '',
     context_tokens: 128000,
     role: 'optimize',
-    is_active: true
+    is_active: true,
+    api_key: ''
   };
 
   @state()
@@ -316,6 +317,22 @@ export class LLMProfileModal extends LitElement {
     };
   }
 
+  private getApiKeyHelp(provider: string): string {
+    const helpText = {
+      openai: 'Get your API key from platform.openai.com/api-keys',
+      anthropic: 'Get your API key from console.anthropic.com',
+      groq: 'Get your API key from console.groq.com/keys',
+      google: 'Get your API key from console.cloud.google.com',
+      ollama: 'No API key required for local Ollama installations'
+    };
+    
+    return helpText[provider as keyof typeof helpText] || 'Enter your API key for this provider';
+  }
+
+  private requiresApiKey(provider: string): boolean {
+    return provider !== 'ollama';
+  }
+
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'));
   }
@@ -329,6 +346,12 @@ export class LLMProfileModal extends LitElement {
   private async handleTestConnection() {
     if (!this.formData.endpoint || !this.formData.model_name) {
       showToast('Please fill in endpoint and model before testing', 'warning');
+      return;
+    }
+
+    // Check API key requirement
+    if (this.requiresApiKey(this.formData.provider || '') && !this.formData.api_key) {
+      showToast('API key is required for this provider', 'warning');
       return;
     }
 
@@ -362,6 +385,13 @@ export class LLMProfileModal extends LitElement {
   private handleSave() {
     // Validate form
     if (!this.formData.name || !this.formData.provider || !this.formData.endpoint) {
+      showToast('Please fill in all required fields', 'warning');
+      return;
+    }
+
+    // Validate API key for providers that require it
+    if (this.requiresApiKey(this.formData.provider || '') && !this.formData.api_key) {
+      showToast('API key is required for this provider', 'warning');
       return;
     }
 
@@ -407,6 +437,25 @@ export class LLMProfileModal extends LitElement {
                   ${provider.charAt(0).toUpperCase() + provider.slice(1)}
                 </button>
               `)}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              API Key
+              ${this.requiresApiKey(this.formData.provider || '') ? html`<span style="color: var(--optimizer-error, #d32f2f);">*</span>` : ''}
+            </label>
+            <input
+              type="password"
+              class="form-input"
+              .value=${this.formData.api_key || ''}
+              @input=${(e: Event) => this.handleInputChange('api_key', (e.target as HTMLInputElement).value)}
+              placeholder="${this.requiresApiKey(this.formData.provider || '') ? 'Enter your API key (required)' : 'Enter your API key (optional)'}"
+              autocomplete="off"
+              ?disabled=${!this.requiresApiKey(this.formData.provider || '')}
+            />
+            <div class="form-help">
+              ${this.getApiKeyHelp(this.formData.provider || 'openai')}
             </div>
           </div>
 
