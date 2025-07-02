@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 import asyncio
+import glob
 import json
 import os
 import shutil
@@ -137,8 +138,20 @@ class SambaClient:
             import getpass
             self.config.samba_password = getpass.getpass("Samba password: ")
         
-        # Create temporary mount point
-        self.mount_point = Path(tempfile.mkdtemp(prefix="ha_addon_deploy_"))
+        # Create temporary mount point with cleanup of existing
+        mount_dir = tempfile.mkdtemp(prefix="ha_addon_deploy_")
+        self.mount_point = Path(mount_dir)
+        
+        # Clean up any existing mount point
+        if self.mount_point.exists():
+            try:
+                # Try to unmount if it's already mounted
+                subprocess.run(["umount", str(self.mount_point)], capture_output=True)
+                shutil.rmtree(self.mount_point)
+            except:
+                pass
+            # Recreate the directory
+            self.mount_point.mkdir(parents=True, exist_ok=True)
         
         try:
             # Mount command for macOS
@@ -153,14 +166,30 @@ class SambaClient:
             result = subprocess.run(mount_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                raise SambaDeploymentError(f"Failed to mount Samba share: {result.stderr}")
+                # Try alternative mount syntax
+                alt_mount_cmd = [
+                    "mount_smbfs",
+                    f"//{self.config.samba_user}:{self.config.samba_password}@{self.config.samba_host}/{self.config.samba_share}",
+                    str(self.mount_point)
+                ]
+                
+                print(f"🔄 Trying alternative mount command...")
+                alt_result = subprocess.run(alt_mount_cmd, capture_output=True, text=True)
+                
+                if alt_result.returncode != 0:
+                    error_msg = result.stderr or alt_result.stderr
+                    raise SambaDeploymentError(f"Failed to mount Samba share: {error_msg}")
             
             self.is_mounted = True
             print(f"✅ Successfully mounted at {self.mount_point}")
             
         except Exception as e:
             if self.mount_point and self.mount_point.exists():
-                shutil.rmtree(self.mount_point)
+                try:
+                    subprocess.run(["umount", str(self.mount_point)], capture_output=True)
+                    shutil.rmtree(self.mount_point)
+                except:
+                    pass
             raise SambaDeploymentError(f"Mount failed: {e}")
     
     async def unmount(self) -> None:
@@ -356,6 +385,32 @@ class FileWatcher(FileSystemEventHandler):
                 print(f"❌ Auto-deployment failed: {e}")
 
 
+def cleanup_stale_mounts():
+    """Clean up any stale mount points from previous runs."""
+    try:
+        import glob
+        # Check multiple possible temp directories
+        temp_patterns = [
+            "/tmp/ha_addon_deploy_*",
+            "/private/var/folders/*/T/ha_addon_deploy_*",
+            "/var/folders/*/T/ha_addon_deploy_*"
+        ]
+        
+        for pattern in temp_patterns:
+            temp_dirs = glob.glob(pattern)
+            for temp_dir in temp_dirs:
+                try:
+                    # Try to unmount in case it's still mounted
+                    subprocess.run(["umount", temp_dir], capture_output=True)
+                    if os.path.exists(temp_dir):
+                        shutil.rmtree(temp_dir)
+                        print(f"🧹 Cleaned up stale mount point: {temp_dir}")
+                except:
+                    pass
+    except:
+        pass
+
+
 async def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Deploy HA Config Optimizer addon via Samba")
@@ -363,8 +418,19 @@ async def main():
     parser.add_argument("--config-only", action="store_true", help="Only deploy configuration files")
     parser.add_argument("--clean", action="store_true", help="Clean remote addon directory first")
     parser.add_argument("--config-file", default="deploy_config.json", help="Configuration file path")
+    parser.add_argument("--cleanup", action="store_true", help="Clean up stale mount points and exit")
     
     args = parser.parse_args()
+    
+    # Handle cleanup command
+    if args.cleanup:
+        print("🧹 Cleaning up stale mount points...")
+        cleanup_stale_mounts()
+        print("✅ Cleanup complete")
+        return 0
+    
+    # Clean up any stale mounts from previous runs
+    cleanup_stale_mounts()
     
     # Load configuration
     config = Config()
