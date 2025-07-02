@@ -68,8 +68,27 @@ async def cancel_scan(scan_id: int, db: Session = Depends(get_db)):
 @router.get("/files/tree")
 async def get_file_tree():
     """Get available YAML files in config directory."""
-    yaml_service = YAMLIngestService()
-    return yaml_service.get_file_tree()
+    try:
+        yaml_service = YAMLIngestService()
+        result = yaml_service.get_file_tree()
+        
+        # Add debug information if no files found
+        if not result.get("files"):
+            result["debug"] = {
+                "config_path": str(yaml_service.config_path),
+                "path_exists": yaml_service.config_path.exists(),
+                "message": "No files found. Check /api/debug/paths for detailed information."
+            }
+        
+        return result
+    except Exception as e:
+        return {
+            "files": [],
+            "error": str(e),
+            "debug": {
+                "message": "Error occurred while building file tree. Check /api/debug/paths for detailed information."
+            }
+        }
 
 
 @router.get("/providers/supported")

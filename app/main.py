@@ -7,7 +7,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import scan, suggestions, settings, ha_integration, logs
+from app.api import scan, suggestions, settings, ha_integration, logs, debug
 from app.api.websocket import websocket_scan_endpoint
 from app.models.init_db import create_tables, init_default_data
 from app.utils.migrate_encryption import migrate_api_keys_to_encrypted
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
     app.include_router(ha_integration.router, prefix="/api/ha", tags=["homeassistant"])
     app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+    app.include_router(debug.router, prefix="/api/debug", tags=["debug"])
 
     # WebSocket endpoints
     @app.websocket("/ws/scan/{scan_id}")

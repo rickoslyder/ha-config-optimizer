@@ -13,21 +13,67 @@ logger = logging.getLogger(__name__)
 
 def get_config_path() -> str:
     """Get the appropriate config path based on environment."""
+    logger.info("=== PATH DETECTION DEBUG START ===")
+    
     # Check if running in Home Assistant addon environment
-    if os.path.exists("/data/options.json"):
-        # With homeassistant_config mapping, HA config is at /homeassistant_config
-        if os.path.exists("/homeassistant_config"):
-            return "/homeassistant_config"
-        # Fallback to old mapping if it exists
-        elif os.path.exists("/config"):
-            return "/config"
+    addon_env = os.path.exists("/data/options.json")
+    logger.info(f"Addon environment detected: {addon_env} (/data/options.json exists: {addon_env})")
+    
+    if addon_env:
+        # List all possible paths based on research
+        possible_paths = [
+            "/config",  # Most common based on community reports
+            "/homeassistant/config",  # Suggested by user in forum
+            "/homeassistant_config",  # Based on HA docs pattern
+            "/homeassistant",  # Alternative interpretation
+        ]
+        
+        logger.info("Checking possible mount paths for homeassistant_config:")
+        for path in possible_paths:
+            exists = os.path.exists(path)
+            is_dir = os.path.isdir(path) if exists else False
+            
+            if exists and is_dir:
+                try:
+                    # Try to list contents
+                    contents = os.listdir(path)
+                    file_count = len([f for f in contents if not f.startswith('.')])
+                    logger.info(f"  {path}: EXISTS, IS_DIR, {len(contents)} total items, {file_count} visible files")
+                    logger.info(f"    First 5 items: {contents[:5]}")
+                    
+                    # Return first path that exists and has content
+                    if file_count > 0:
+                        logger.info(f"Selected path: {path} (first non-empty directory)")
+                        logger.info("=== PATH DETECTION DEBUG END ===")
+                        return path
+                        
+                except PermissionError as e:
+                    logger.warning(f"  {path}: EXISTS, IS_DIR, but PERMISSION_DENIED: {e}")
+                except Exception as e:
+                    logger.error(f"  {path}: EXISTS, IS_DIR, but ERROR listing contents: {e}")
+            else:
+                logger.info(f"  {path}: exists={exists}, is_dir={is_dir}")
+        
+        # If we get here, try any existing directory even if empty
+        for path in possible_paths:
+            if os.path.exists(path) and os.path.isdir(path):
+                logger.warning(f"Using empty directory as fallback: {path}")
+                logger.info("=== PATH DETECTION DEBUG END ===")
+                return path
+                
+        logger.error("No valid paths found in addon environment!")
     
     # Development environment - use test-config directory
     dev_config = Path(__file__).parent.parent.parent / "test-config"
+    logger.info(f"Development config path: {dev_config}, exists: {dev_config.exists()}")
     if dev_config.exists():
+        logger.info(f"Selected development path: {dev_config}")
+        logger.info("=== PATH DETECTION DEBUG END ===")
         return str(dev_config)
     
     # Fallback to current directory
+    logger.warning("Using fallback path: '.'")
+    logger.info("=== PATH DETECTION DEBUG END ===")
     return "."
 
 
@@ -81,6 +127,20 @@ class YAMLIngestService:
     
     def get_file_tree(self) -> Dict[str, Any]:
         """Get a tree structure of available files and directories."""
+        logger.info("=== FILE TREE DEBUG START ===")
+        logger.info(f"Config path: {self.config_path}")
+        logger.info(f"Config path exists: {self.config_path.exists()}")
+        logger.info(f"Config path is dir: {self.config_path.is_dir()}")
+        
+        if self.config_path.exists():
+            try:
+                all_items = list(self.config_path.iterdir())
+                logger.info(f"Total items in config directory: {len(all_items)}")
+                for item in all_items:
+                    logger.info(f"  {item.name} ({'DIR' if item.is_dir() else 'FILE'})")
+            except Exception as e:
+                logger.error(f"Error listing config directory: {e}")
+        
         def build_tree_node(path: Path) -> Dict[str, Any]:
             """Build a tree node for a file or directory."""
             relative_path = str(path.relative_to(self.config_path))
@@ -124,9 +184,13 @@ class YAMLIngestService:
         try:
             root_node = build_tree_node(self.config_path)
             # Return the children of the root as the top level
-            return {"files": root_node.get("children", [])}
+            result = {"files": root_node.get("children", [])}
+            logger.info(f"File tree result: {len(result['files'])} top-level items")
+            logger.info("=== FILE TREE DEBUG END ===")
+            return result
         except Exception as e:
             logger.error(f"Error reading file tree: {e}")
+            logger.info("=== FILE TREE DEBUG END ===")
             return {"files": []}
     
     def read_yaml_file(self, file_path: str) -> Optional[Dict[str, Any]]:

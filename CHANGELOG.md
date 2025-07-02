@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2025-01-02
+
+### Added - Comprehensive File Picker Debugging 🔍
+- **Debug Endpoints**: Added `/api/debug/paths` and `/api/debug/file-tree-raw` for troubleshooting
+- **Enhanced Logging**: Added comprehensive path detection logging to identify mount point issues
+- **Multiple Path Detection**: Now checks all possible mount paths: `/config`, `/homeassistant/config`, `/homeassistant_config`, `/homeassistant`
+- **Improved Error Handling**: File tree API now includes debug information when no files are found
+
+### Technical Improvements
+- **Path Priority Order**: Checks most likely paths first based on community research
+- **Detailed Directory Listing**: Logs directory contents during path detection
+- **Debug Information**: API responses include helpful debug details when issues occur
+- **Error Recovery**: Better fallback mechanisms when primary paths don't exist
+
+### Debugging Features
+The debug endpoints provide:
+- Environment detection status
+- All checked paths with existence status
+- Directory contents for existing paths
+- YAMLIngestService initialization details
+- System information and environment variables
+
+This release adds extensive debugging capabilities to identify why the file picker shows "No files available" in different Home Assistant environments.
+
 ## [0.2.6] - 2025-01-02
 
 ### Fixed - File Picker Shows Files in Addon Environment 📁
@@ -302,7 +326,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...v0.2.4
