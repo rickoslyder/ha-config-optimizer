@@ -30,7 +30,7 @@ hassio_api: true
 
 # File system access - using proper HA addon security mapping
 map:
-  - homeassistant_config
+  - homeassistant_config:rw
   - backup:rw
   - addon_config:rw
 

@@ -111,9 +111,8 @@ backups/
 Icon?
 ._*
 
-# Generated icons (keep source SVGs, ignore generated PNGs)
-icon.png
-logo.png
+# Generated icons (keep source SVGs)
+# Note: icon.png and logo.png are required for Home Assistant addon discovery
 
 # Runtime and process files
 *.pid
