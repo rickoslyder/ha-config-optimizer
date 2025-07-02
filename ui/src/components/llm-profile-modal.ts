@@ -248,32 +248,32 @@ export class LLMProfileModal extends LitElement {
   private providerPresets = {
     openai: {
       endpoint: 'https://api.openai.com/v1',
-      models: ['o4-mini', 'o4-mini-high', 'o3', 'o1-preview', 'gpt-4o', 'gpt-4-turbo'],
-      defaultModel: 'o4-mini',
+      models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'],
+      defaultModel: 'gpt-4o-mini',
       contextTokens: 128000
     },
     anthropic: {
       endpoint: 'https://api.anthropic.com/v1',
-      models: ['claude-opus-4', 'claude-sonnet-4', 'claude-3.5-sonnet', 'claude-3.5-haiku'],
-      defaultModel: 'claude-sonnet-4',
+      models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+      defaultModel: 'claude-3-5-sonnet-20241022',
       contextTokens: 200000
     },
     google: {
-      endpoint: 'https://generativelanguage.googleapis.com/v1',
-      models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
-      defaultModel: 'gemini-2.5-flash',
-      contextTokens: 1048576
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro', 'gemini-pro-vision'],
+      defaultModel: 'gemini-1.5-flash',
+      contextTokens: 1000000
     },
     groq: {
       endpoint: 'https://api.groq.com/openai/v1',
-      models: ['mixtral-8x7b-32768', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-      defaultModel: 'llama-3.3-70b-versatile',
-      contextTokens: 32768
+      models: ['llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'],
+      defaultModel: 'llama3-70b-8192',
+      contextTokens: 8192
     },
     ollama: {
       endpoint: 'http://localhost:11434',
-      models: ['llama3.3:70b', 'mistral:latest', 'codellama:latest', 'qwen2.5-coder:32b'],
-      defaultModel: 'llama3.3:70b',
+      models: ['llama3.1', 'llama3', 'codellama', 'mistral', 'phi3'],
+      defaultModel: 'llama3.1',
       contextTokens: 128000
     }
   };

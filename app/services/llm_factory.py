@@ -6,6 +6,7 @@ import logging
 
 from app.llm_providers.base import BaseLLMProvider
 from app.llm_providers.openai import OpenAIProvider
+from app.llm_providers.litellm_provider import LiteLLMProvider
 from app.models.schemas import LLMProfile
 from app.config import get_settings
 
@@ -61,26 +62,22 @@ class LLMProviderFactory:
             "endpoint": profile.endpoint or env_config.get("endpoint"),
             "api_key": api_key,
             "context_tokens": profile.context_tokens or env_config.get("context_tokens"),
-            "role": profile.role
+            "role": profile.role,
+            # Add optional proxy configuration
+            "proxy_url": settings.litellm_proxy_url,
+            "proxy_api_key": settings.litellm_proxy_api_key
         }
         
         try:
-            if profile.provider.lower() == "openai":
-                return OpenAIProvider(config)
-            elif profile.provider.lower() == "anthropic":
-                # TODO: Implement AnthropicProvider
-                logger.warning("Anthropic provider not yet implemented")
-                return None
-            elif profile.provider.lower() == "groq":
-                # TODO: Implement GroqProvider (OpenAI-compatible)
-                logger.warning("Groq provider not yet implemented") 
-                return None
-            elif profile.provider.lower() == "ollama":
-                # TODO: Implement OllamaProvider
-                logger.warning("Ollama provider not yet implemented")
-                return None
+            # Get supported providers info
+            supported_providers = LLMProviderFactory.get_supported_providers()
+            provider_lower = profile.provider.lower()
+            
+            if provider_lower in supported_providers:
+                logger.info(f"Creating LiteLLM provider for {profile.provider}")
+                return LiteLLMProvider(config)
             else:
-                logger.error(f"Unknown LLM provider: {profile.provider}")
+                logger.error(f"Unsupported LLM provider: {profile.provider}")
                 return None
                 
         except Exception as e:
@@ -93,23 +90,20 @@ class LLMProviderFactory:
         try:
             config = settings.get_llm_config(provider_name)
             config["role"] = role
+            # Add optional proxy configuration
+            config["proxy_url"] = settings.litellm_proxy_url
+            config["proxy_api_key"] = settings.litellm_proxy_api_key
             
-            if provider_name.lower() == "openai":
-                return OpenAIProvider(config)
-            elif provider_name.lower() == "anthropic":
-                # TODO: Implement AnthropicProvider
-                logger.warning("Anthropic provider not yet implemented")
-                return None
-            elif provider_name.lower() == "groq":
-                # TODO: Implement GroqProvider (OpenAI-compatible)
-                logger.warning("Groq provider not yet implemented")
-                return None
-            elif provider_name.lower() == "ollama":
-                # TODO: Implement OllamaProvider
-                logger.warning("Ollama provider not yet implemented")
-                return None
+            # Get supported providers info
+            supported_providers = LLMProviderFactory.get_supported_providers()
+            provider_lower = provider_name.lower()
+            
+            if provider_lower in supported_providers:
+                config["provider"] = provider_name  # Add provider name to config
+                logger.info(f"Creating LiteLLM provider for {provider_name}")
+                return LiteLLMProvider(config)
             else:
-                logger.error(f"Unknown LLM provider: {provider_name}")
+                logger.error(f"Unsupported LLM provider: {provider_name}")
                 return None
                 
         except Exception as e:
@@ -118,49 +112,101 @@ class LLMProviderFactory:
     
     @staticmethod
     def get_supported_providers() -> Dict[str, Dict[str, Any]]:
-        """Get information about supported LLM providers."""
+        """Get information about supported LLM providers via LiteLLM."""
         return {
             "openai": {
                 "name": "OpenAI",
-                "models": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo-preview"],
+                "models": [
+                    "gpt-4o",
+                    "gpt-4o-mini", 
+                    "gpt-4-turbo",
+                    "gpt-4",
+                    "gpt-3.5-turbo",
+                    "o1-preview",
+                    "o1-mini"
+                ],
                 "requires_api_key": True,
                 "default_endpoint": "https://api.openai.com/v1",
                 "context_limits": {
-                    "gpt-3.5-turbo": 4000,
+                    "gpt-4o": 128000,
+                    "gpt-4o-mini": 128000,
+                    "gpt-4-turbo": 128000,
                     "gpt-4": 8000,
-                    "gpt-4-turbo-preview": 128000
+                    "gpt-3.5-turbo": 16000,
+                    "o1-preview": 128000,
+                    "o1-mini": 128000
                 }
             },
             "anthropic": {
                 "name": "Anthropic Claude",
-                "models": ["claude-3-haiku", "claude-3-sonnet", "claude-3-opus"],
+                "models": [
+                    "claude-3-5-sonnet-20241022",
+                    "claude-3-5-haiku-20241022", 
+                    "claude-3-opus-20240229",
+                    "claude-3-sonnet-20240229",
+                    "claude-3-haiku-20240307"
+                ],
                 "requires_api_key": True,
-                "default_endpoint": "https://api.anthropic.com",
+                "default_endpoint": "https://api.anthropic.com/v1",
                 "context_limits": {
-                    "claude-3-haiku": 200000,
-                    "claude-3-sonnet": 200000,
-                    "claude-3-opus": 200000
+                    "claude-3-5-sonnet-20241022": 200000,
+                    "claude-3-5-haiku-20241022": 200000,
+                    "claude-3-opus-20240229": 200000,
+                    "claude-3-sonnet-20240229": 200000,
+                    "claude-3-haiku-20240307": 200000
+                }
+            },
+            "google": {
+                "name": "Google (Gemini)",
+                "models": [
+                    "gemini-pro",
+                    "gemini-pro-vision",
+                    "gemini-1.5-pro",
+                    "gemini-1.5-flash"
+                ],
+                "requires_api_key": True,
+                "default_endpoint": "https://generativelanguage.googleapis.com/v1beta",
+                "context_limits": {
+                    "gemini-pro": 30000,
+                    "gemini-pro-vision": 16000,
+                    "gemini-1.5-pro": 1000000,
+                    "gemini-1.5-flash": 1000000
                 }
             },
             "groq": {
                 "name": "Groq",
-                "models": ["llama-3-70b", "mixtral-8x7b"],
+                "models": [
+                    "llama3-70b-8192",
+                    "llama3-8b-8192",
+                    "mixtral-8x7b-32768",
+                    "gemma-7b-it"
+                ],
                 "requires_api_key": True,
                 "default_endpoint": "https://api.groq.com/openai/v1",
                 "context_limits": {
-                    "llama-3-70b": 8000,
-                    "mixtral-8x7b": 32000
+                    "llama3-70b-8192": 8192,
+                    "llama3-8b-8192": 8192,
+                    "mixtral-8x7b-32768": 32768,
+                    "gemma-7b-it": 8192
                 }
             },
             "ollama": {
                 "name": "Ollama (Local)",
-                "models": ["llama3", "codellama", "mistral"],
+                "models": [
+                    "llama3",
+                    "llama3.1",
+                    "codellama",
+                    "mistral",
+                    "phi3"
+                ],
                 "requires_api_key": False,
                 "default_endpoint": "http://localhost:11434",
                 "context_limits": {
                     "llama3": 8000,
+                    "llama3.1": 128000,
                     "codellama": 16000,
-                    "mistral": 8000
+                    "mistral": 8000,
+                    "phi3": 128000
                 }
             }
         }

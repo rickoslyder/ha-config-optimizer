@@ -355,32 +355,40 @@ export class SetupWizard extends LitElement {
   private providerPresets: Record<string, ProviderPreset> = {
     openai: {
       endpoint: 'https://api.openai.com/v1',
-      models: ['o4-mini', 'o4-mini-high', 'o3', 'o1-preview', 'gpt-4o'],
-      defaultModel: 'o4-mini',
+      models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-preview', 'o1-mini'],
+      defaultModel: 'gpt-4o-mini',
       contextTokens: 128000,
       description: 'Most popular choice with reliable performance',
       setupUrl: 'https://platform.openai.com/api-keys'
     },
     anthropic: {
       endpoint: 'https://api.anthropic.com/v1',
-      models: ['claude-opus-4', 'claude-sonnet-4', 'claude-3.5-sonnet'],
-      defaultModel: 'claude-sonnet-4',
+      models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
+      defaultModel: 'claude-3-5-sonnet-20241022',
       contextTokens: 200000,
-      description: 'Excellent reasoning capabilities',
+      description: 'Excellent reasoning capabilities and long context',
       setupUrl: 'https://console.anthropic.com'
+    },
+    google: {
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
+      defaultModel: 'gemini-1.5-flash',
+      contextTokens: 1000000,
+      description: 'Google\'s powerful models with huge context windows',
+      setupUrl: 'https://makersuite.google.com/app/apikey'
     },
     groq: {
       endpoint: 'https://api.groq.com/openai/v1',
-      models: ['mixtral-8x7b-32768', 'llama-3.3-70b-versatile'],
-      defaultModel: 'llama-3.3-70b-versatile',
-      contextTokens: 32768,
+      models: ['llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768'],
+      defaultModel: 'llama3-70b-8192',
+      contextTokens: 8192,
       description: 'Fast inference with open-source models',
       setupUrl: 'https://console.groq.com/keys'
     },
     ollama: {
       endpoint: 'http://localhost:11434',
-      models: ['llama3.3:70b', 'mistral:latest', 'codellama:latest'],
-      defaultModel: 'llama3.3:70b',
+      models: ['llama3.1', 'llama3', 'codellama', 'mistral', 'phi3'],
+      defaultModel: 'llama3.1',
       contextTokens: 128000,
       description: 'Run models locally on your own hardware',
       setupUrl: 'https://ollama.ai/download'
@@ -605,7 +613,7 @@ export class SetupWizard extends LitElement {
             @click=${() => this.selectProvider(key)}
           >
             <div class="provider-icon">
-              ${key === 'openai' ? '🤖' : key === 'anthropic' ? '🧠' : key === 'groq' ? '⚡' : '🏠'}
+              ${key === 'openai' ? '🤖' : key === 'anthropic' ? '🧠' : key === 'google' ? '🔍' : key === 'groq' ? '⚡' : '🏠'}
             </div>
             <h4 class="provider-name">${key.charAt(0).toUpperCase() + key.slice(1)}</h4>
             <p class="provider-description">${preset.description}</p>

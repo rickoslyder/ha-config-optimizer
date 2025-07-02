@@ -8,6 +8,7 @@ from .anthropic import AnthropicProvider
 from .google import GoogleProvider
 from .groq import GroqProvider
 from .ollama import OllamaProvider
+from .litellm_provider import LiteLLMProvider
 
 
 def get_llm_provider(provider_type: str, config: dict) -> Optional[BaseLLMProvider]:
@@ -45,5 +46,6 @@ __all__ = [
     "GoogleProvider",
     "GroqProvider",
     "OllamaProvider",
+    "LiteLLMProvider",
     "get_llm_provider"
 ]

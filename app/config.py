@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     ollama_model: str = Field(default="llama3", alias="OLLAMA_MODEL")
     ollama_max_tokens: int = Field(default=8000, alias="OLLAMA_MAX_TOKENS")
     
+    # LiteLLM Proxy (Optional)
+    litellm_proxy_url: Optional[str] = Field(default=None, alias="LITELLM_PROXY_URL")
+    litellm_proxy_api_key: Optional[str] = Field(default=None, alias="LITELLM_PROXY_API_KEY")
+    
     # =============================================================================
     # Application Configuration
     # =============================================================================
