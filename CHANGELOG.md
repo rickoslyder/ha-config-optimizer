@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-01-02
+
+### Fixed
+- Fixed API health check returning 404 error in Ingress mode
+- Changed to use relative URLs when in Home Assistant Ingress environment
+- Fixed health check to use relative path 'health' instead of '/health'
+- Added fallback to addon/info endpoint if health check fails
+- Updated API service to use relative 'api' base URL in Ingress mode
+
+## [0.1.1] - 2025-01-02
+
+### Added
+- Error handling and console logging for debugging initialization
+- Loading indicator while the app initializes
+- Clear error messages with reload button if API connection fails
+- Automatic detection of Home Assistant Ingress environment
+- Debug logging for API requests and connection status
+
+### Fixed
+- Fixed blank page issue when accessing Web UI through Home Assistant
+- Fixed API base URL detection for Ingress compatibility
+- Fixed asset loading by using relative paths in Vite configuration
+- Fixed Python module structure by preserving app directory hierarchy
+- Fixed module import paths in run script
+- Fixed Docker build issues with Python dependencies
+- Fixed frontend build by including package-lock.json
+- Resolved npm ci failures by including dev dependencies
+
+### Changed
+- Switched to official Home Assistant Python base images
+- Simplified Python package installation process
+- Updated Dockerfile to use appropriate base images for each architecture
+- Improved error messages and user feedback
+
+### Security
+- Removed .claude/settings.local.json from version control
+
 ## [0.1.0] - 2025-01-02
 
 ### Added
@@ -67,5 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/rickoslyder/ha-config-optimizer/releases/tag/v0.1.0
