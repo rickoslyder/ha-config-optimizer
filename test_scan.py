@@ -6,7 +6,11 @@ import asyncio
 import os
 import tempfile
 import yaml
+import logging
 from pathlib import Path
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 # Add the app directory to Python path
 import sys
@@ -15,8 +19,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from app.models.init_db import create_tables, init_default_data
 from app.services.scan_service import ScanService
 from app.services.yaml_ingest import YAMLIngestService
+from app.services.llm_factory import LLMProviderFactory
 from app.models.database import SessionLocal
 from app.models.schemas import LLMProfile
+from app.config import get_settings
 
 
 def create_test_yaml_files(test_dir: Path):
@@ -92,6 +98,21 @@ def create_test_yaml_files(test_dir: Path):
 async def test_scan_engine():
     """Test the complete scan engine workflow."""
     
+    settings = get_settings()
+    
+    # Check if we have any API keys configured
+    available_providers = settings.get_available_providers()
+    if not available_providers:
+        print("❌ No LLM providers configured!")
+        print("Please set up at least one API key in your .env file:")
+        print("- OPENAI_API_KEY=sk-your-key-here")
+        print("- ANTHROPIC_API_KEY=your-key-here")  
+        print("- GROQ_API_KEY=your-key-here")
+        print("- Or configure Ollama locally")
+        return
+    
+    print(f"✅ Found configured providers: {', '.join(available_providers)}")
+    
     # Create temporary directory for test files
     with tempfile.TemporaryDirectory() as temp_dir:
         test_dir = Path(temp_dir)
@@ -109,27 +130,39 @@ async def test_scan_engine():
         try:
             db = SessionLocal()
             
-            # Check if we have an LLM profile
-            llm_profile = db.query(LLMProfile).first()
+            # Use the first available provider
+            provider_name = available_providers[0]
+            print(f"Using provider: {provider_name}")
+            
+            # Create or update LLM profile with environment config
+            llm_profile = db.query(LLMProfile).filter(LLMProfile.provider == provider_name).first()
+            env_config = settings.get_llm_config(provider_name)
+            
             if not llm_profile:
-                print("No LLM profile found. Creating a test profile...")
-                # Note: This won't work without a real API key
-                test_profile = LLMProfile(
-                    name="Test OpenAI",
-                    provider="openai",
-                    endpoint="https://api.openai.com/v1",
-                    api_key="test-key-please-set-real-key",
-                    context_tokens=4000,
+                print(f"Creating LLM profile for {provider_name}...")
+                llm_profile = LLMProfile(
+                    name=f"Environment {provider_name.title()}",
+                    provider=provider_name,
+                    endpoint=env_config["endpoint"],
+                    api_key=env_config["api_key"],
+                    context_tokens=env_config["context_tokens"],
                     role="optimize",
-                    model_name="gpt-3.5-turbo",
+                    model_name=env_config["model_name"],
                     is_active=1
                 )
-                db.add(test_profile)
+                db.add(llm_profile)
                 db.commit()
-                db.refresh(test_profile)
-                llm_profile = test_profile
+                db.refresh(llm_profile)
+            else:
+                # Update existing profile with current environment values
+                print(f"Updating LLM profile for {provider_name}...")
+                llm_profile.api_key = env_config["api_key"]
+                llm_profile.endpoint = env_config["endpoint"]
+                llm_profile.model_name = env_config["model_name"]
+                llm_profile.context_tokens = env_config["context_tokens"]
+                db.commit()
             
-            print(f"Using LLM profile: {llm_profile.name}")
+            print(f"Using LLM profile: {llm_profile.name} ({llm_profile.model_name})")
             
             # Create and execute a scan
             scan_service = ScanService()

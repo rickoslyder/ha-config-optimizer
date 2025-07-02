@@ -15,7 +15,7 @@ class LLMMessage(BaseModel):
 class LLMResponse(BaseModel):
     """Standard response format from LLM providers."""
     content: str
-    usage: Optional[Dict[str, int]] = None
+    usage: Optional[Dict[str, Any]] = None  # Changed to Any to handle nested objects
     model: Optional[str] = None
     finish_reason: Optional[str] = None
 

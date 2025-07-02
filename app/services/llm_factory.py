@@ -7,8 +7,10 @@ import logging
 from app.llm_providers.base import BaseLLMProvider
 from app.llm_providers.openai import OpenAIProvider
 from app.models.schemas import LLMProfile
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class LLMProviderFactory:
@@ -18,12 +20,15 @@ class LLMProviderFactory:
     def create_provider(profile: LLMProfile) -> Optional[BaseLLMProvider]:
         """Create an LLM provider from a profile configuration."""
         
+        # Use environment config as fallback for missing profile values
+        env_config = settings.get_llm_config(profile.provider)
+        
         config = {
             "provider": profile.provider,
-            "model_name": profile.model_name,
-            "endpoint": profile.endpoint,
-            "api_key": profile.api_key,
-            "context_tokens": profile.context_tokens,
+            "model_name": profile.model_name or env_config.get("model_name"),
+            "endpoint": profile.endpoint or env_config.get("endpoint"),
+            "api_key": profile.api_key or env_config.get("api_key"),
+            "context_tokens": profile.context_tokens or env_config.get("context_tokens"),
             "role": profile.role
         }
         
@@ -48,6 +53,35 @@ class LLMProviderFactory:
                 
         except Exception as e:
             logger.error(f"Failed to create LLM provider {profile.provider}: {e}")
+            return None
+    
+    @staticmethod
+    def create_provider_from_env(provider_name: str, role: str = "optimize") -> Optional[BaseLLMProvider]:
+        """Create an LLM provider directly from environment configuration."""
+        try:
+            config = settings.get_llm_config(provider_name)
+            config["role"] = role
+            
+            if provider_name.lower() == "openai":
+                return OpenAIProvider(config)
+            elif provider_name.lower() == "anthropic":
+                # TODO: Implement AnthropicProvider
+                logger.warning("Anthropic provider not yet implemented")
+                return None
+            elif provider_name.lower() == "groq":
+                # TODO: Implement GroqProvider (OpenAI-compatible)
+                logger.warning("Groq provider not yet implemented")
+                return None
+            elif provider_name.lower() == "ollama":
+                # TODO: Implement OllamaProvider
+                logger.warning("Ollama provider not yet implemented")
+                return None
+            else:
+                logger.error(f"Unknown LLM provider: {provider_name}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to create LLM provider {provider_name} from env: {e}")
             return None
     
     @staticmethod

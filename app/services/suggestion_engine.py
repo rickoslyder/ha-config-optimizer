@@ -140,7 +140,9 @@ class SuggestionEngine:
             ]
             
             try:
+                logger.info(f"Sending prompt to LLM (chunk {i+1}): {chunk[:200]}...")
                 response = await self.llm_provider.generate(messages)
+                logger.info(f"Received LLM response: {response.content[:200]}...")
                 chunk_suggestions = self._parse_optimization_response(response.content, scan_id)
                 all_suggestions.extend(chunk_suggestions)
                 
@@ -257,6 +259,22 @@ class SuggestionEngine:
     
     def _get_optimization_system_prompt(self) -> str:
         """Get system prompt for optimization analysis."""
+        # Check if this is an o4 model and use simpler prompt
+        if hasattr(self.llm_provider, 'model') and "o4" in self.llm_provider.model:
+            return """You are a Home Assistant expert. Find problems in the YAML and suggest fixes.
+
+Return a JSON array with suggestions. Each suggestion needs:
+- "title": What to fix
+- "description": How to fix it  
+- "impact": "high", "medium", or "low"
+- "category": "performance" or "maintainability"
+- "file_path": Which file to change
+- "before": Current YAML
+- "after": Fixed YAML
+- "reasoning": Why fix this
+
+Only return valid JSON, nothing else."""
+        
         return """You are an expert Home Assistant configuration analyst. Your job is to analyze YAML configuration files and suggest specific optimizations.
 
 For each suggestion, provide a JSON object with these fields:
@@ -335,9 +353,11 @@ Respond only with a valid JSON array of automation suggestion objects, no other 
                 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse optimization response as JSON: {e}")
-            logger.debug(f"Response content: {response}")
+            logger.error(f"Raw LLM response: {response}")
+            logger.info("The LLM may not have returned properly formatted JSON. This is normal for the first run.")
         except Exception as e:
             logger.error(f"Error parsing optimization response: {e}")
+            logger.error(f"Raw LLM response: {response}")
         
         return suggestions
     

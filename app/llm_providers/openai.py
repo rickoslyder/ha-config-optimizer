@@ -28,12 +28,22 @@ class OpenAIProvider(BaseLLMProvider):
                     "Content-Type": "application/json"
                 }
                 
+                # Special handling for o4 models
+                is_o4_model = "o4" in self.model
+                
                 payload = {
                     "model": self.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
-                    "max_tokens": min(1000, self.context_tokens // 4),
-                    "temperature": 0.1
                 }
+                
+                # Add token limit parameter based on model type
+                if is_o4_model:
+                    # o4 models need much more tokens due to reasoning overhead
+                    payload["max_completion_tokens"] = min(4000, self.context_tokens - 500)
+                    # o4 models only support temperature=1 (default)
+                else:
+                    payload["max_tokens"] = min(1000, self.context_tokens // 4)
+                    payload["temperature"] = 0.1
                 
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -46,10 +56,17 @@ class OpenAIProvider(BaseLLMProvider):
                     raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
                 
                 data = response.json()
+                logger.debug(f"OpenAI API response: {data}")
+                
                 choice = data["choices"][0]
+                content = choice["message"]["content"]
+                
+                if not content:
+                    logger.warning("OpenAI returned empty content")
+                    content = ""
                 
                 return LLMResponse(
-                    content=choice["message"]["content"],
+                    content=content,
                     usage=data.get("usage"),
                     model=data.get("model"),
                     finish_reason=choice.get("finish_reason")
@@ -68,13 +85,23 @@ class OpenAIProvider(BaseLLMProvider):
                     "Content-Type": "application/json"
                 }
                 
+                # Special handling for o4 models
+                is_o4_model = "o4" in self.model
+                
                 payload = {
                     "model": self.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
-                    "max_tokens": min(1000, self.context_tokens // 4),
-                    "temperature": 0.1,
                     "stream": True
                 }
+                
+                # Add parameters based on model type
+                if is_o4_model:
+                    # o4 models need much more tokens due to reasoning overhead
+                    payload["max_completion_tokens"] = min(4000, self.context_tokens - 500)
+                    # o4 models only support temperature=1 (default)
+                else:
+                    payload["max_tokens"] = min(1000, self.context_tokens // 4)
+                    payload["temperature"] = 0.1
                 
                 async with client.stream(
                     "POST",
