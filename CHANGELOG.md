@@ -7,6 +7,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-02
+
+### Major Release - Complete User Experience Overhaul 🚀
+
+**BREAKING THROUGH: Comprehensive Fix for Scan Failures and User Confusion**
+
+This major release completely transforms the user experience by addressing the root causes of scan failures (file_count: 0) and user confusion through intelligent setup guidance, proactive error recovery, and robust backend validation.
+
+### 🎯 **Phase 1.1: Critical API Key Infrastructure**
+- **Added API Key Input Fields**: Secure password input in LLM Profile Modal with provider-specific guidance
+- **Enhanced TypeScript Interface**: Added `api_key` field to LLMProfile interface for full frontend support
+- **Visual Status Indicators**: Real-time profile readiness status showing which profiles are missing API keys
+- **Smart Validation**: Required field markers and connection testing that validates API key presence
+- **Provider-Specific Help**: Direct links and instructions for obtaining API keys from each provider
+
+### 🧙 **Phase 1.2: Intelligent Setup & Startup Validation**
+- **Startup System Readiness Check**: Automatic detection of missing/invalid LLM profiles on app initialization
+- **Comprehensive Setup Wizard**: Beautiful 3-step guided setup with provider selection, configuration, and testing
+- **Proactive User Guidance**: Fixed-position guidance panel that appears when setup is needed
+- **Provider Selection Cards**: Visual interface for OpenAI, Anthropic, Groq, and Ollama with descriptions
+- **Connection Testing Integration**: Built-in connection validation before completing setup
+- **Smart Profile Validation**: Detects API key requirements based on provider type
+
+### 🎨 **Phase 1.3: Enhanced UX & Advanced Error Recovery**
+- **Intelligent Empty States**: Context-aware messaging based on scan history and current application state
+  - First-time user guidance with clear next steps
+  - Running scan progress with detailed status
+  - Completed scan results with actionable options
+- **Advanced Error Recovery System**: Smart error detection with contextual recovery actions
+  - API key and authentication error handling
+  - Quota and rate limiting guidance
+  - Network connectivity troubleshooting
+  - Provider-specific error categorization
+- **Error Recovery Panel**: Fixed-position panel with step-by-step recovery guidance
+- **Enhanced Error Messages**: Specific detection for common issues with actionable solutions
+
+### 🛡️ **Backend: Robust Profile Validation & Error Handling**
+- **Fixed Default Profile Creation**: Eliminated broken default profiles that caused scan failures
+- **Enhanced LLM Provider Factory**: Comprehensive validation for profile requirements and API keys
+- **Improved Connection Testing**: Better handling of encrypted/plaintext API keys with proper error categorization
+- **Advanced Scan Service Error Handling**: Specific guidance for different failure types with actionable recommendations
+- **System Status Monitoring**: New `/system-status` endpoint for real-time system health checking
+- **Enhanced Error Diagnostics**: Context-aware error messages that guide users to solutions
+
+### 🔧 **Technical Implementation Highlights**
+
+**Frontend Architecture:**
+- **Setup Wizard Component**: Complete 3-step wizard with provider presets and validation
+- **Error Recovery Component**: Smart error panel with contextual actions and detailed guidance
+- **Enhanced Empty States**: Dynamic messaging system based on application state
+- **Improved Error Handler**: Advanced error categorization with specific recovery suggestions
+- **System Integration**: Main app component with startup validation and guided user flows
+
+**Backend Infrastructure:**
+- **Robust Profile Validation**: Multi-layer validation preventing broken configurations
+- **Enhanced Error Classification**: Specific error types with appropriate HTTP status codes
+- **Improved Connection Testing**: Handles various encryption states and provider requirements
+- **System Health Monitoring**: Comprehensive status checking with detailed metrics
+- **Advanced Logging**: Enhanced debugging with actionable error messages
+
+### 🎯 **User Impact & Problem Resolution**
+
+**Root Cause Resolution:**
+- ✅ **No More "file_count: 0" Failures**: Eliminated broken default profiles and enhanced validation
+- ✅ **Clear API Key Setup Process**: Users can no longer get stuck without knowing how to enter API keys
+- ✅ **Proactive Guidance**: App actively helps users get properly configured instead of failing silently
+- ✅ **Smart Error Recovery**: When things go wrong, users get specific help to fix the issues
+- ✅ **Intelligent UX**: Empty states and error messages adapt to the user's current situation
+
+**User Experience Transformation:**
+- **First-Time Users**: Guided setup wizard makes LLM configuration approachable and clear
+- **Existing Users**: Automatic detection of configuration issues with helpful recovery guidance
+- **Error Scenarios**: Smart error recovery with step-by-step instructions instead of cryptic messages
+- **Ongoing Usage**: Context-aware interface that adapts to the user's current needs and state
+
+### 📊 **Comprehensive Feature Matrix**
+
+| Feature | Before | After |
+|---------|---------|--------|
+| **API Key Entry** | ❌ No UI to enter keys | ✅ Secure input with provider guidance |
+| **Setup Process** | ❌ Confusing, trial-and-error | ✅ Guided 3-step wizard |
+| **Error Handling** | ❌ Generic "scan failed" | ✅ Specific recovery instructions |
+| **Empty States** | ❌ Static "no data" messages | ✅ Dynamic, context-aware guidance |
+| **Profile Validation** | ❌ Broken defaults created | ✅ Comprehensive validation |
+| **System Status** | ❌ No visibility into readiness | ✅ Real-time health monitoring |
+| **User Guidance** | ❌ Users left to figure it out | ✅ Proactive help throughout |
+
+### 🚀 **Migration & Compatibility**
+- **Automatic Migration**: Existing installations automatically benefit from improved error handling
+- **Backward Compatibility**: All existing profiles and configurations continue to work
+- **Progressive Enhancement**: New features activate automatically without breaking existing workflows
+- **Zero Downtime**: Updates apply seamlessly without requiring reconfiguration
+
+### 🔮 **Future-Ready Architecture**
+- **Extensible Error Recovery**: Framework supports adding new error types and recovery methods
+- **Modular Setup System**: Setup wizard can easily accommodate new LLM providers
+- **Scalable UX Patterns**: Empty states and guidance system can expand to new features
+- **Robust Validation**: Backend validation framework supports future configuration options
+
+### 🎯 **Developer Experience**
+- **Enhanced Debugging**: Comprehensive logging and error tracking for troubleshooting
+- **Modular Components**: Setup wizard and error recovery components are reusable
+- **Type Safety**: Full TypeScript support with proper interfaces throughout
+- **Testing Framework**: Components designed for easy testing and validation
+
+This release represents a fundamental transformation from a system that could confuse users and fail silently to one that actively guides users to success and provides intelligent help when needed. The days of "file_count: 0" scan failures and user confusion are officially over.
+
 ## [0.2.12] - 2025-01-02
 
 ### Added - Comprehensive Scan Debugging 🔍
@@ -442,7 +549,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.12...v0.3.0
 [0.2.8]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.5...v0.2.6
