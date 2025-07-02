@@ -6,12 +6,12 @@ FROM $BUILD_FROM
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install system dependencies and Node.js
-ARG NODEJS_VERSION
 RUN \
     apk add --no-cache \
         nodejs \
         npm \
         curl \
+        git \
         && apk add --no-cache --virtual .build-dependencies \
         build-base \
         python3-dev \
@@ -22,18 +22,22 @@ RUN \
 # Copy Python requirements and install
 COPY requirements.txt /tmp/
 RUN \
-    pip3 install --no-cache-dir -r /tmp/requirements.txt \
+    echo "Installing Python requirements..." \
+    && pip3 install --no-cache-dir -r /tmp/requirements.txt \
+    && echo "Cleaning up build dependencies..." \
     && apk del .build-dependencies \
     && rm -rf /tmp/*
 
 # Copy and build frontend
 COPY ui/ /tmp/ui/
 RUN \
-    cd /tmp/ui \
+    echo "Building frontend..." \
+    && cd /tmp/ui \
     && npm ci --only=production \
     && npm run build \
     && mkdir -p /app/static \
     && cp -r build/* /app/static/ \
+    && echo "Frontend build complete" \
     && rm -rf /tmp/ui
 
 # Copy backend source
