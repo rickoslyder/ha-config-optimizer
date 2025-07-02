@@ -143,46 +143,77 @@ class YAMLIngestService:
         
         def build_tree_node(path: Path) -> Dict[str, Any]:
             """Build a tree node for a file or directory."""
-            relative_path = str(path.relative_to(self.config_path))
+            logger.info(f"[build_tree_node] Processing: {path}")
+            logger.info(f"[build_tree_node] Is file: {path.is_file()}, Is dir: {path.is_dir()}")
+            
+            try:
+                relative_path = str(path.relative_to(self.config_path))
+                logger.info(f"[build_tree_node] Relative path: '{relative_path}'")
+            except Exception as e:
+                logger.error(f"[build_tree_node] Error calculating relative path for {path}: {e}")
+                relative_path = str(path.name)  # Fallback to just the name
             
             if path.is_file():
-                return {
-                    "name": path.name,
-                    "path": relative_path,
-                    "type": "file",
-                    "size": path.stat().st_size,
-                    "lastModified": path.stat().st_mtime
-                }
+                try:
+                    file_stat = path.stat()
+                    logger.info(f"[build_tree_node] File {path.name}: size={file_stat.st_size}, extension={path.suffix.lower()}")
+                    return {
+                        "name": path.name,
+                        "path": relative_path,
+                        "type": "file",
+                        "size": file_stat.st_size,
+                        "lastModified": file_stat.st_mtime
+                    }
+                except Exception as e:
+                    logger.error(f"[build_tree_node] Error accessing file {path}: {e}")
+                    return None
             else:
                 children = []
+                logger.info(f"[build_tree_node] Processing directory: {path}")
                 try:
                     # Sort directories first, then files
-                    items = sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name.lower()))
+                    items = list(path.iterdir())
+                    logger.info(f"[build_tree_node] Found {len(items)} items in directory: {[i.name for i in items]}")
+                    items = sorted(items, key=lambda x: (x.is_file(), x.name.lower()))
+                    
                     for item in items:
+                        logger.info(f"[build_tree_node] Processing item: {item.name}")
+                        
                         # Skip hidden files and common excludes
                         if item.name.startswith('.') or item.name in ['__pycache__', '.git']:
+                            logger.info(f"[build_tree_node] Skipping hidden/excluded: {item.name}")
                             continue
                         
                         # Handle files and directories separately
                         if item.is_file():
+                            logger.info(f"[build_tree_node] Item is file: {item.name}, extension: {item.suffix.lower()}")
                             # For files, only include YAML and common config files
                             if item.suffix.lower() in ['.yaml', '.yml', '.json', '.txt', '.md']:
-                                logger.info(f"Including file: {item.name} (size: {item.stat().st_size})")
-                                children.append(build_tree_node(item))
+                                logger.info(f"[build_tree_node] Including file: {item.name} (size: {item.stat().st_size})")
+                                file_node = build_tree_node(item)
+                                if file_node is not None:
+                                    children.append(file_node)
+                                    logger.info(f"[build_tree_node] File node added successfully: {item.name}")
+                                else:
+                                    logger.error(f"[build_tree_node] File node creation failed: {item.name}")
                             else:
-                                logger.info(f"Skipping file (wrong extension): {item.name}")
+                                logger.info(f"[build_tree_node] Skipping file (wrong extension): {item.name}")
                         else:
                             # For directories, process recursively and include if they have any content
-                            logger.info(f"Processing directory: {item.name}")
+                            logger.info(f"[build_tree_node] Processing subdirectory: {item.name}")
                             child_node = build_tree_node(item)
-                            # Include directories that have any children (files or subdirectories)
-                            if child_node.get("children"):
-                                logger.info(f"Including directory: {item.name} (has {len(child_node.get('children', []))} children)")
+                            if child_node and child_node.get("children"):
+                                logger.info(f"[build_tree_node] Including directory: {item.name} (has {len(child_node.get('children', []))} children)")
                                 children.append(child_node)
                             else:
-                                logger.info(f"Skipping empty directory: {item.name}")
-                except PermissionError:
-                    pass  # Skip directories we can't read
+                                logger.info(f"[build_tree_node] Skipping empty directory: {item.name}")
+                                
+                    logger.info(f"[build_tree_node] Directory {path.name} processed: {len(children)} children added")
+                    
+                except PermissionError as e:
+                    logger.error(f"[build_tree_node] Permission denied reading directory {path}: {e}")
+                except Exception as e:
+                    logger.error(f"[build_tree_node] Error processing directory {path}: {e}")
                 
                 return {
                     "name": path.name if path != self.config_path else "Home Assistant Config",
@@ -192,22 +223,33 @@ class YAMLIngestService:
                 }
         
         try:
+            logger.info("[get_file_tree] Calling build_tree_node for root path")
             root_node = build_tree_node(self.config_path)
-            logger.info(f"Root node built: {root_node.get('name', 'UNKNOWN')}")
-            logger.info(f"Root node children count: {len(root_node.get('children', []))}")
+            logger.info(f"[get_file_tree] Root node built: {root_node.get('name', 'UNKNOWN')}")
+            logger.info(f"[get_file_tree] Root node type: {root_node.get('type', 'UNKNOWN')}")
+            logger.info(f"[get_file_tree] Root node children count: {len(root_node.get('children', []))}")
+            
+            if root_node.get('children'):
+                logger.info("[get_file_tree] Root node children details:")
+                for i, child in enumerate(root_node.get('children', [])):
+                    logger.info(f"  Child {i+1}: {child.get('name', 'UNKNOWN')} ({child.get('type', 'UNKNOWN')})")
+            else:
+                logger.warning("[get_file_tree] Root node has no children!")
             
             # Return the children of the root as the top level
             result = {"files": root_node.get("children", [])}
-            logger.info(f"File tree result: {len(result['files'])} top-level items")
+            logger.info(f"[get_file_tree] Final result: {len(result['files'])} top-level items")
             
             # Log details of returned files
-            for i, file_item in enumerate(result['files'][:5]):  # First 5 files
-                logger.info(f"  File {i+1}: {file_item.get('name', 'UNKNOWN')} ({file_item.get('type', 'UNKNOWN')})")
+            for i, file_item in enumerate(result['files'][:10]):  # First 10 files
+                logger.info(f"  Result {i+1}: {file_item.get('name', 'UNKNOWN')} ({file_item.get('type', 'UNKNOWN')}) path='{file_item.get('path', 'UNKNOWN')}'")
             
             logger.info("=== FILE TREE DEBUG END ===")
             return result
         except Exception as e:
-            logger.error(f"Error reading file tree: {e}")
+            logger.error(f"[get_file_tree] Error reading file tree: {e}")
+            import traceback
+            logger.error(f"[get_file_tree] Traceback: {traceback.format_exc()}")
             logger.info("=== FILE TREE DEBUG END ===")
             return {"files": []}
     
