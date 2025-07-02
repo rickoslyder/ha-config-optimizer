@@ -1,0 +1,25 @@
+{
+  "name": "ha-config-optimizer-ui",
+  "version": "0.1.0",
+  "description": "Frontend for Home Assistant Config Optimizer",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lit": "^3.1.0",
+    "@lit-labs/context": "^0.4.0",
+    "@lit-labs/router": "^0.1.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "typescript": "^5.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.50.0"
+  }
+}

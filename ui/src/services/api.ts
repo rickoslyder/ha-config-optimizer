@@ -1,0 +1,143 @@
+/**
+ * API service for communicating with the backend.
+ */
+
+export interface Scan {
+  id: number;
+  started_at: string;
+  ended_at?: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  file_count: number;
+  suggestions?: Suggestion[];
+}
+
+export interface Suggestion {
+  id: number;
+  type: 'optimization' | 'automation';
+  title: string;
+  body_md: string;
+  impact: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'applied';
+  created_at: string;
+  diff?: Diff;
+}
+
+export interface Diff {
+  id: number;
+  file_path: string;
+  patch: string;
+  original_sha: string;
+}
+
+export interface Settings {
+  yaml_includes: string[];
+  yaml_excludes: string[];
+  cron_expr?: string;
+  db_dsn?: string;
+  db_type: string;
+}
+
+export interface LLMProfile {
+  id: number;
+  name: string;
+  provider: string;
+  endpoint?: string;
+  context_tokens: number;
+  role: string;
+  model_name?: string;
+  is_active: boolean;
+}
+
+class ApiService {
+  private baseUrl = '/api';
+
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  // Scan API
+  async getScans(): Promise<Scan[]> {
+    return this.request<Scan[]>('/scan/');
+  }
+
+  async createScan(files: string[], llmProfileId?: number): Promise<Scan> {
+    return this.request<Scan>('/scan/', {
+      method: 'POST',
+      body: JSON.stringify({
+        files,
+        scan_type: 'manual',
+        llm_profile_id: llmProfileId,
+      }),
+    });
+  }
+
+  async getScan(scanId: number): Promise<Scan> {
+    return this.request<Scan>(`/scan/${scanId}`);
+  }
+
+  async getFileTree(): Promise<any> {
+    return this.request('/scan/files/tree');
+  }
+
+  // Suggestions API
+  async getSuggestions(scanId?: number): Promise<Suggestion[]> {
+    const params = scanId ? `?scan_id=${scanId}` : '';
+    return this.request<Suggestion[]>(`/suggestions/${params}`);
+  }
+
+  async updateSuggestion(suggestionId: number, status: string): Promise<Suggestion> {
+    return this.request<Suggestion>(`/suggestions/${suggestionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async deleteSuggestion(suggestionId: number): Promise<void> {
+    await this.request(`/suggestions/${suggestionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Settings API
+  async getSettings(): Promise<Settings> {
+    return this.request<Settings>('/settings/');
+  }
+
+  async updateSettings(settings: Partial<Settings>): Promise<Settings> {
+    return this.request<Settings>('/settings/', {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  async getLLMProfiles(): Promise<LLMProfile[]> {
+    return this.request<LLMProfile[]>('/settings/llm-profiles');
+  }
+
+  async createLLMProfile(profile: Omit<LLMProfile, 'id' | 'is_active'>): Promise<LLMProfile> {
+    return this.request<LLMProfile>('/settings/llm-profiles', {
+      method: 'POST',
+      body: JSON.stringify(profile),
+    });
+  }
+
+  async deleteLLMProfile(profileId: number): Promise<void> {
+    await this.request(`/settings/llm-profiles/${profileId}`, {
+      method: 'DELETE',
+    });
+  }
+}
+
+export const apiService = new ApiService();

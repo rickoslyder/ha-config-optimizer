@@ -1,0 +1,27 @@
+{
+  "name": "LLM Config Optimizer",
+  "version": "0.1.0",
+  "slug": "llm-config-optimizer",
+  "description": "AI-powered Home Assistant configuration analysis and optimization",
+  "url": "https://github.com/your-repo/ha-config-optimizer",
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "startup": "application",
+  "boot": "auto",
+  "init": false,
+  "ingress": true,
+  "ingress_port": 8000,
+  "panel_icon": "mdi:cog-outline",
+  "panel_title": "Config Optimizer",
+  "options": {
+    "log_level": "info"
+  },
+  "schema": {
+    "log_level": "list(trace|debug|info|notice|warning|error|fatal)?"
+  },
+  "map": [
+    "config:rw"
+  ],
+  "environment": {
+    "LOG_LEVEL": "log_level"
+  }
+}
