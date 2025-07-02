@@ -44,7 +44,7 @@ RUN \
     && rm -rf /tmp/ui
 
 # Copy backend source
-COPY app/ /app/
+COPY app/ /app/app/
 
 # Copy rootfs
 COPY rootfs /

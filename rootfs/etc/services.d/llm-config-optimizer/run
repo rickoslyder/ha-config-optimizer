@@ -36,4 +36,4 @@ export DATA_PATH="/data"
 
 # Run the application on port 8099 for Ingress
 cd /app
-exec python3 -m uvicorn main:app --host 0.0.0.0 --port 8099 --log-level "${log_level}"
+exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8099 --log-level "${log_level}"
