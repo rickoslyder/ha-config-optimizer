@@ -31,6 +31,7 @@ class ScanCreate(BaseModel):
     files: List[str] = []
     scan_type: str = "manual"
     llm_profile_id: Optional[int] = None
+    analysis_types: List[str] = ["optimization"]
 
 
 class SuggestionUpdate(BaseModel):

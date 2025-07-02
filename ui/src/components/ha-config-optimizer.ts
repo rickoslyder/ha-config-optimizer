@@ -1,7 +1,10 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import './tab-navigation.js';
+import './scan-progress.js';
 import '../views/optimizations-view.js';
+import '../views/automations-view.js';
+import '../views/logs-view.js';
 import '../views/settings-view.js';
 import type { TabId } from './tab-navigation.js';
 
@@ -9,6 +12,9 @@ import type { TabId } from './tab-navigation.js';
 export class HaConfigOptimizer extends LitElement {
   @state()
   private activeTab: TabId = 'optimizations';
+
+  @state()
+  private hasRunningScans = false;
 
   static styles = css`
     :host {
@@ -68,6 +74,7 @@ export class HaConfigOptimizer extends LitElement {
       --optimizer-success: #00c875;
       --optimizer-warning: #f57f17;
       --optimizer-error: #d32f2f;
+      --optimizer-automation: #4caf50;
       --impact-high: #d32f2f;
       --impact-medium: #f57f17;
       --impact-low: #00c875;
@@ -90,18 +97,17 @@ export class HaConfigOptimizer extends LitElement {
     this.activeTab = event.detail.tabId;
   }
 
+  private handleScansUpdated(event: CustomEvent) {
+    const { runningScans } = event.detail;
+    this.hasRunningScans = runningScans.length > 0;
+  }
+
   private renderView() {
     switch (this.activeTab) {
       case 'optimizations':
         return html`<optimizations-view></optimizations-view>`;
       case 'automations':
-        return html`
-          <div class="placeholder">
-            <h2>🤖 Automation Suggestions</h2>
-            <p>AI-powered automation suggestions based on your device usage patterns.</p>
-            <p><em>Coming soon...</em></p>
-          </div>
-        `;
+        return html`<automations-view></automations-view>`;
       case 'diffs':
         return html`
           <div class="placeholder">
@@ -111,13 +117,7 @@ export class HaConfigOptimizer extends LitElement {
           </div>
         `;
       case 'logs':
-        return html`
-          <div class="placeholder">
-            <h2>📋 Operation Logs</h2>
-            <p>View detailed logs of scan operations and system events.</p>
-            <p><em>Coming soon...</em></p>
-          </div>
-        `;
+        return html`<logs-view></logs-view>`;
       case 'settings':
         return html`<settings-view></settings-view>`;
       default:
@@ -129,7 +129,18 @@ export class HaConfigOptimizer extends LitElement {
     return html`
       <div class="header">
         <h1 class="title">Config Optimizer</h1>
-        <p class="subtitle">AI-powered Home Assistant configuration analysis</p>
+        <p class="subtitle">
+          AI-powered Home Assistant configuration analysis
+          ${this.hasRunningScans ? html`
+            <scan-progress compact @scans-updated=${this.handleScansUpdated}></scan-progress>
+          ` : ''}
+        </p>
+        ${!this.hasRunningScans ? html`
+          <scan-progress 
+            style="display: none;" 
+            @scans-updated=${this.handleScansUpdated}
+          ></scan-progress>
+        ` : ''}
       </div>
       
       <tab-navigation 

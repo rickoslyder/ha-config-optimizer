@@ -72,15 +72,20 @@ class ApiService {
     return this.request<Scan[]>('/scan/');
   }
 
-  async createScan(files: string[], llmProfileId?: number): Promise<Scan> {
+  async createScan(files: string[], llmProfileId?: number, analysisTypes: string[] = ['optimization']): Promise<Scan> {
     return this.request<Scan>('/scan/', {
       method: 'POST',
       body: JSON.stringify({
         files,
         scan_type: 'manual',
         llm_profile_id: llmProfileId,
+        analysis_types: analysisTypes,
       }),
     });
+  }
+
+  async createAutomationScan(files: string[] = [], llmProfileId?: number): Promise<Scan> {
+    return this.createScan(files, llmProfileId, ['automation']);
   }
 
   async getScan(scanId: number): Promise<Scan> {
@@ -107,6 +112,18 @@ class ApiService {
   async deleteSuggestion(suggestionId: number): Promise<void> {
     await this.request(`/suggestions/${suggestionId}`, {
       method: 'DELETE',
+    });
+  }
+
+  async applySuggestion(suggestionId: number): Promise<Suggestion> {
+    return this.request<Suggestion>(`/suggestions/${suggestionId}/apply`, {
+      method: 'POST',
+    });
+  }
+
+  async previewSuggestion(suggestionId: number): Promise<any> {
+    return this.request(`/suggestions/${suggestionId}/preview`, {
+      method: 'POST',
     });
   }
 
@@ -137,6 +154,27 @@ class ApiService {
     await this.request(`/settings/llm-profiles/${profileId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Real-time monitoring
+  startScanMonitoring(callback: (scans: Scan[]) => void, interval = 2000): () => void {
+    const pollScans = async () => {
+      try {
+        const scans = await this.getScans();
+        callback(scans);
+      } catch (error) {
+        console.error('Failed to poll scans:', error);
+      }
+    };
+
+    // Initial call
+    pollScans();
+
+    // Set up interval
+    const intervalId = setInterval(pollScans, interval);
+
+    // Return cleanup function
+    return () => clearInterval(intervalId);
   }
 }
 

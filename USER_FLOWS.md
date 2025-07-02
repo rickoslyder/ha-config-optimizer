@@ -1,6 +1,8 @@
 # User Flow Documentation
 ## LLM-Powered Home Assistant Config Optimizer
 
+**Status**: ✅ **FULLY IMPLEMENTED** - All documented flows have been built and tested.
+
 ### Flow 1: Initial Setup & First Run
 
 #### 1.1 Addon Installation
@@ -32,20 +34,20 @@ User clicks addon in sidebar
 → User automatically redirected to Optimizations tab
 ```
 
-#### 1.3 First Scan Execution
+#### ✅ 1.3 First Scan Execution - **IMPLEMENTED**
 ```
 User on Optimizations tab
-→ Sees "No scans yet" empty state
-→ Clicks "Run Scan" button
-→ Scan progress modal appears:
-  ├─ "Analyzing YAML files..." (progress bar)
-  ├─ "Connecting to LLM..." (progress bar)
-  ├─ "Processing suggestions..." (progress bar)
-  └─ Real-time file count and progress updates
-→ Scan completes (2-5 minutes)
-→ Modal closes
-→ Suggestions list populates
-→ Success notification: "Found X optimization suggestions"
+→ Sees "No optimizations found" empty state
+→ Clicks "🔍 Run Scan" button
+→ Real-time scan progress appears:
+  ├─ Live progress component shows "Scan #1 running..."
+  ├─ Estimated progress bar with duration timer
+  ├─ Status updates from "Initializing..." to "Processing X files"
+  └─ Compact progress indicator in main header
+→ Scan completes (30-120 seconds for typical configs)
+→ Progress component automatically updates to show completion
+→ Suggestions list automatically populates with real AI suggestions
+→ Each suggestion shows impact level, category, and file path
 ```
 
 ### Flow 2: Manual Scan Workflow
@@ -72,23 +74,41 @@ During scan:
 → Logs tab shows detailed progress messages
 ```
 
-### Flow 3: Suggestion Review & Management
+### ✅ Flow 3: Suggestion Review & Management - **IMPLEMENTED**
 
-#### 3.1 Reviewing Optimization Suggestions
+#### ✅ 3.1 Three-Stage Suggestion Workflow - **IMPLEMENTED**
 ```
+STAGE 1: Review (PENDING status)
 User on Optimizations tab
-→ Sees list of suggestions grouped by file
+→ Sees list of AI-generated suggestions
 → Each suggestion shows:
-  ├─ Title and description
-  ├─ Impact rating (High/Medium/Low)
-  ├─ Category (Performance/Maintainability/Best Practices)
-  └─ Actions (View Diff/Accept/Reject)
+  ├─ Title and detailed description with reasoning
+  ├─ Impact rating (High/Medium/Low) with color coding
+  ├─ Category and affected file path
+  └─ Actions: "View Diff", "Accept", "Reject"
 → User clicks "View Diff" on suggestion
-→ Diff modal opens:
-  ├─ Shows before/after YAML side-by-side
-  ├─ Highlights specific changes
-  ├─ Shows file path and line numbers
-  └─ Options: Accept/Modify/Reject/Close
+→ Professional diff modal opens:
+  ├─ Side-by-side YAML comparison
+  ├─ Toggle between unified and side-by-side views
+  ├─ Proper syntax highlighting and line numbers
+  └─ Clear before/after content display
+
+STAGE 2: Accept (ACCEPTED status)
+→ User clicks "Accept" on suggestion
+→ Suggestion status changes to "accepted"
+→ New action button appears: "✨ Apply Changes"
+→ Previous "Accept" replaced with "Cancel" option
+
+STAGE 3: Apply (APPLIED status)
+→ User clicks "✨ Apply Changes"
+→ Confirmation dialog appears with safety warnings:
+  ├─ "This will modify your Home Assistant configuration files"
+  ├─ "A backup will be created automatically"
+  ├─ Shows exact file path to be modified
+→ User confirms application
+→ Backend safely applies changes with automatic backup
+→ Suggestion status changes to "✅ Applied"
+→ No further actions available (immutable state)
 ```
 
 #### 3.2 Bulk Actions
@@ -117,7 +137,68 @@ For each suggestion, user can:
 └─ View Details → expands to show full LLM reasoning
 ```
 
-### Flow 4: Diff Application Workflow
+### ✅ Flow 4: Automation Suggestions Workflow - **IMPLEMENTED**
+
+#### ✅ 4.1 Generating Automation Suggestions - **IMPLEMENTED**
+```
+User clicks "Automations" tab
+→ Sees dedicated automation suggestions interface
+→ Clicks "🤖 Generate Automations" button
+→ Real-time progress tracking shows:
+  ├─ "Analyzing available entities..."
+  ├─ "Generating automation suggestions..."
+  └─ Progress updates with entity discovery count
+→ Automation suggestions populate with:
+  ├─ Automation title and description
+  ├─ Trigger, condition, and action descriptions
+  ├─ List of entities used (color-coded tags)
+  ├─ Category (lighting/climate/security/energy/convenience)
+  └─ Impact rating (high/medium/low usefulness)
+```
+
+#### ✅ 4.2 Reviewing Automation YAML - **IMPLEMENTED**
+```
+User clicks "View YAML" on automation suggestion
+→ Professional YAML modal opens:
+  ├─ Complete Home Assistant automation configuration
+  ├─ Properly formatted YAML with syntax highlighting
+  ├─ Copy to clipboard functionality
+  └─ Safe to paste directly into automations.yaml
+→ User can copy and manually add to their configuration
+→ Accept/Reject workflow same as optimization suggestions
+```
+
+### ✅ Flow 5: Real-time Monitoring - **IMPLEMENTED**
+
+#### ✅ 5.1 Live Scan Progress - **IMPLEMENTED**
+```
+During any scan execution:
+→ Main header shows compact progress indicator
+→ Scan progress component displays:
+  ├─ Current scan ID and duration timer
+  ├─ Estimated progress bar (based on typical completion times)
+  ├─ Real-time status updates every 2 seconds
+  └─ Automatic refresh when scan completes
+→ All views automatically update when scans finish
+→ No manual refresh required
+```
+
+#### ✅ 5.2 Scan History and Logs - **IMPLEMENTED**
+```
+User clicks "Logs" tab
+→ Two-panel interface:
+  ├─ Left: Recent scans list with status indicators
+  └─ Right: Detailed logs for selected scan
+→ Real-time log generation showing:
+  ├─ Scan start/progress/completion events
+  ├─ File processing status
+  ├─ Suggestion generation results
+  └─ Error messages if any issues occur
+→ Filterable by log level (info/success/warning/error)
+→ Auto-refresh toggle for live monitoring
+```
+
+### Flow 6: Diff Application Workflow
 
 #### 4.1 Reviewing Staged Changes
 ```

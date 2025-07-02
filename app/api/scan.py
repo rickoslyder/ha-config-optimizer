@@ -38,7 +38,7 @@ async def create_scan(scan_request: ScanCreate, db: Session = Depends(get_db)):
     await scan_service.start_background_scan(
         scan.id, 
         file_paths=file_paths,
-        analysis_types=["optimization"]  # Default to optimization
+        analysis_types=scan_request.analysis_types
     )
     
     return scan
