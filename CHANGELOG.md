@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-01-02
+
+### Fixed - Critical Addon Discovery Fix 🚨
+- **Fixed Map Configuration**: Added missing `:rw` suffix to `homeassistant_config` mapping (was `homeassistant_config`, now `homeassistant_config:rw`)
+- **Removed Problematic Security Options**: Removed extensive security configuration block that may have caused addon parser issues
+- **Reverted to Minimal Working Config**: Based configuration on working v0.2.0 structure with essential improvements only
+
+### Root Cause Analysis
+The addon discovery issue was caused by the `homeassistant_config` mapping missing the `:rw` suffix in v0.2.1. This made the mapping read-only by default, likely causing Home Assistant's addon validation to fail. The official Samba addon uses `homeassistant_config:rw` format.
+
+### Technical Details
+- Restored consistent mapping format matching official Home Assistant addons
+- Removed potentially unsupported security configuration options that were added in v0.2.1
+- Maintained essential functionality while ensuring addon parser compatibility
+
+This release should restore addon discoverability in the Home Assistant addon store.
+
 ## [0.2.2] - 2025-01-02
 
 ### Fixed - Addon Discovery Issue 🔍
@@ -234,7 +251,8 @@ This patch release specifically addresses addon discoverability issues in the Ho
 - ✅ Safe configuration modification with automatic backups
 - ✅ Home Assistant Ingress authentication and routing
 
-[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rickoslyder/ha-config-optimizer/compare/v0.1.4...v0.2.0
